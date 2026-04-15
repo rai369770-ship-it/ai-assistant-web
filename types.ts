@@ -16,7 +16,7 @@ export interface ChatMessage {
 }
 
 export interface AttachedFile {
-  file: File;
+  file: any;
   uri?: string;
   mimeType: string;
   name: string;

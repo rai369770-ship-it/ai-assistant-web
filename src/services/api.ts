@@ -1,4 +1,3 @@
-import { ChatMessage, GroundingChunk, AttachedFile } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 
 const KEY_POOL_URL = "https://mainsite-kcvz.onrender.com/tafb/key_pool.json?etag=1&n=2&client=key&maxage=1200";
@@ -41,11 +40,13 @@ export async function getApiKeys(): Promise<string[]> {
   }
 }
 
-async function uploadFileToGemini(apiKey: string, file: File): Promise<string> {
+async function uploadFileToGemini(apiKey: string, fileUri: string, fileName: string, mimeType: string): Promise<string> {
   const metaData = {
-    file: { display_name: file.name }
+    file: { display_name: fileName }
   };
 
+  // For React Native, we's expected that fileUri is already accessible
+  // In production, you'd upload to a server first or use base64
   const startUploadRes = await fetch(
     `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
     {
@@ -53,8 +54,8 @@ async function uploadFileToGemini(apiKey: string, file: File): Promise<string> {
       headers: {
         'X-Goog-Upload-Protocol': 'resumable',
         'X-Goog-Upload-Command': 'start',
-        'X-Goog-Upload-Header-Content-Length': file.size.toString(),
-        'X-Goog-Upload-Header-Content-Type': file.type,
+        'X-Goog-Upload-Header-Content-Length': '0',
+        'X-Goog-Upload-Header-Content-Type': mimeType,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(metaData)
@@ -66,14 +67,18 @@ async function uploadFileToGemini(apiKey: string, file: File): Promise<string> {
     throw new Error(`Failed to initiate upload: ${startUploadRes.statusText}`);
   }
 
+  // Read file as base64 in React Native
+  const response = await fetch(fileUri);
+  const blob = await response.blob();
+  
   const uploadRes = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
-      'Content-Length': file.size.toString(),
+      'Content-Length': blob.size.toString(),
       'X-Goog-Upload-Offset': '0',
       'X-Goog-Upload-Command': 'upload, finalize'
     },
-    body: file
+    body: blob
   });
 
   if (!uploadRes.ok) {
@@ -81,7 +86,7 @@ async function uploadFileToGemini(apiKey: string, file: File): Promise<string> {
   }
 
   const fileInfo = await uploadRes.json();
-  const fileUri = fileInfo.file.uri;
+  const uri = fileInfo.file.uri;
 
   let state = fileInfo.file.state;
   while (state === 'PROCESSING') {
@@ -94,16 +99,16 @@ async function uploadFileToGemini(apiKey: string, file: File): Promise<string> {
     if (state === 'FAILED') throw new Error("File processing failed on Gemini server.");
   }
 
-  return fileUri;
+  return uri;
 }
 
-export const transcribeAudio = async (audioFile: File): Promise<string> => {
+export const transcribeAudio = async (audioFileUri: string, fileName: string, mimeType: string): Promise<string> => {
   const keys = await getApiKeys();
   if (keys.length === 0) throw new Error("No API keys available");
 
   for (const apiKey of keys) {
     try {
-      const fileUri = await uploadFileToGemini(apiKey, audioFile);
+      const fileUri = await uploadFileToGemini(apiKey, audioFileUri, fileName, mimeType);
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
@@ -112,7 +117,7 @@ export const transcribeAudio = async (audioFile: File): Promise<string> => {
           parts: [
             {
               fileData: {
-                mimeType: audioFile.type,
+                mimeType: mimeType,
                 fileUri: fileUri
               }
             },
@@ -133,12 +138,12 @@ export const transcribeAudio = async (audioFile: File): Promise<string> => {
 };
 
 export const streamGeminiResponse = async (
-  messages: ChatMessage[],
-  activeFile: AttachedFile | null,
+  messages: Array<{ role: string; content: string }>,
+  activeFile: { uri: string; name: string; mimeType: string } | null,
   youtubeLinks: string[],
   isUrlUnderstanding: boolean,
   modelName: string,
-  onUpdate: (content: string, groundingChunks?: GroundingChunk[]) => void,
+  onUpdate: (content: string, groundingChunks?: any[]) => void,
   onComplete: () => void,
   onError: (error: Error) => void
 ) => {
@@ -167,7 +172,7 @@ export const streamGeminiResponse = async (
       if (lastUserMsgIndex !== -1) {
         // Attach File if present
         if (activeFile) {
-          const fileUri = await uploadFileToGemini(apiKey, activeFile.file);
+          const fileUri = await uploadFileToGemini(apiKey, activeFile.uri, activeFile.name, activeFile.mimeType);
           contents[lastUserMsgIndex].parts.push({
             fileData: {
               mimeType: activeFile.mimeType,
@@ -180,7 +185,7 @@ export const streamGeminiResponse = async (
         for (const ytLink of youtubeLinks) {
           contents[lastUserMsgIndex].parts.push({
             fileData: {
-              mimeType: 'video/mp4', // YouTube links are treated as video/mp4 URIs in Gemini
+              mimeType: 'video/mp4',
               fileUri: ytLink
             }
           });
@@ -204,7 +209,7 @@ export const streamGeminiResponse = async (
       });
 
       let fullContent = "";
-      let finalGroundingChunks: GroundingChunk[] | undefined;
+      let finalGroundingChunks: any[] | undefined;
 
       for await (const chunk of responseStream) {
         if (chunk.candidates?.[0]?.content?.parts) {
@@ -213,7 +218,7 @@ export const streamGeminiResponse = async (
           }
         }
         if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-          finalGroundingChunks = chunk.candidates[0].groundingMetadata.groundingChunks as GroundingChunk[];
+          finalGroundingChunks = chunk.candidates[0].groundingMetadata.groundingChunks as any[];
         }
         onUpdate(fullContent, finalGroundingChunks);
       }
