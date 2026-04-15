@@ -35,6 +35,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download and setup Gradle Wrapper
+        run: |
+          mkdir -p android/gradle/wrapper
+          curl -L https://raw.githubusercontent.com/gradle/gradle/v8.6.0/gradle/wrapper/gradle-wrapper.jar -o android/gradle/wrapper/gradle-wrapper.jar
+          chmod +x android/gradlew
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
