@@ -1,49 +1,47 @@
 ```
-# Dependencies
-node_modules/
+# Android build outputs
+android/app/build/
+android/build/outputs/
+android/.gradle/
+.gradle/
 
-# Build outputs
-dist/
-build/
-*.js.map
-*.tsbuildinfo
+# Keystore
+android/app/debug.keystore
 
-# Environment variables
-.env
-.env.local
-*.env.*
+# Local configuration
+local.properties
 
 # IDE files
-.vscode/
 .idea/
-*.swp
-*.swo
+*.iml
+*.ipr
+*.iws
+
+# OS generated files
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log
 
-# Temporary files
+# Temp files
 *.tmp
+*.temp
 
-# Coverage
+# Environment
+.env
+.env.local
+*.env.*
+
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Python cache (if any Python files exist)
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
+.Python
 ```
