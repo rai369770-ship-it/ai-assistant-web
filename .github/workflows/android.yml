@@ -48,10 +48,16 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Verify Android project structure
+        run: |
+          ls -la android/
+          ls -la android/app/
+          ls -la android/app/src/main/
+
       - name: Build Android Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
@@ -63,7 +69,12 @@ jobs:
       - name: Build Android Release APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
+
+      - name: Verify APK outputs
+        run: |
+          ls -la android/app/build/outputs/apk/debug/ || echo "Debug APK not found"
+          ls -la android/app/build/outputs/apk/release/ || echo "Release APK not found"
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
