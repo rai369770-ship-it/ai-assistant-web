@@ -38,6 +38,13 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Download Gradle Wrapper jar
+        run: |
+          cd android
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            curl -L https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          fi
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
