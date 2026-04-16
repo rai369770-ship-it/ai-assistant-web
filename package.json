@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "latest",
-    "react": "18.3.1",
+    "react": "19.0.0",
     "react-native": "0.78.0",
     "react-native-gesture-handler": "^2.20.2",
     "react-native-markdown-display": "^7.0.2",
@@ -39,12 +39,12 @@
     "@react-native/eslint-config": "0.78.0",
     "@react-native/metro-config": "0.78.0",
     "@react-native/typescript-config": "0.78.0",
-    "@types/react": "^18.2.6",
-    "@types/react-test-renderer": "^18.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-test-renderer": "^19.0.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
     "prettier": "2.8.8",
-    "react-test-renderer": "18.3.1",
+    "react-test-renderer": "19.0.0",
     "typescript": "^5.0.4"
   },
   "engines": {
