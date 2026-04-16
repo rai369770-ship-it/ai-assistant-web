@@ -1,42 +1,11 @@
 ```
-# Gradle and Android build artifacts
+# Gradle
 .gradle/
 build/
+*.gradle
+
+# Android
 *.apk
 *.aar
-*.jar
-*.class
-
-# Android specific
 local.properties
-captures/
-*.keystore
-
-# Dependencies
-node_modules/
-vendor/
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-.env.*
-
-# Editor/IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# OS generated
-.DS_Store
-Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
 ```
