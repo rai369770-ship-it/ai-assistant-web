@@ -1,18 +1,55 @@
 ```
 # Dependencies
-.gradle/
+node_modules/
+
+# Build artifacts
 build/
+dist/
+target/
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Logs and temp files
-*.log
-*.tmp
+# Editors
+.vscode/
+.idea/
 
-# OS generated files
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Gradle
+.gradle/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# MyPy
+.mypy_cache/
+
+# PyTest
+.pytest_cache/
 ```
