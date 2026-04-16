@@ -1,19 +1,20 @@
 ```
-# Gradle
+# Gradle and Android build artifacts
 .gradle/
 build/
-!gradle-wrapper.properties
-
-# Android
 *.apk
 *.aar
-*.iml
-local.properties
+*.jar
+*.class
 
-# Temporary files
-*.tmp
-*.temp
-*~
+# Android specific
+local.properties
+captures/
+*.keystore
+
+# Dependencies
+node_modules/
+vendor/
 
 # Logs
 *.log
@@ -23,12 +24,19 @@ local.properties
 .env.local
 .env.*
 
-# IDE
+# Editor/IDE
+.vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
 
-# OS
+# OS generated
 .DS_Store
 Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
 ```
