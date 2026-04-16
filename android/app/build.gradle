@@ -71,7 +71,7 @@ android {
             debuggable true
         }
         release {
-            minifyEnabled enableProguardInReleaseBuilds
+            minifyEnabled project.hasProperty('enableProguardInReleaseBuilds') ? enableProguardInReleaseBuilds.toBoolean() : false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             signingConfig signingConfigs.release
         }
