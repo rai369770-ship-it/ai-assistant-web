@@ -1,15 +1,12 @@
 ```
+# Dependencies
+.gradle/
+node_modules/
+
 # Build artifacts
 build/
-.gradle/
-
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
+dist/
+target/
 
 # Environment
 .env
@@ -22,11 +19,30 @@ __pycache__/
 *.swp
 *.swo
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
 
-# System files
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git*
+!/.gitignore
 .DS_Store
 Thumbs.db
 ```
