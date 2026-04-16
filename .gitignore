@@ -3,9 +3,30 @@
 .gradle/
 build/
 *.gradle
+!build.gradle
 
 # Android
 *.apk
 *.aar
-local.properties
+*.dex
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.egg-info/
 ```
