@@ -14,8 +14,6 @@
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-native-documents/picker": "12.0.1",
     "@react-native-voice/voice": "^3.2.4",
-    "expo-av": "~15.0.2",
-    "expo-media-library": "~17.0.3",
     "react": "19.0.0",
     "react-native": "0.79.0",
     "react-native-fs": "^2.20.0",
