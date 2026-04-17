@@ -13,7 +13,7 @@ import {
   findNodeHandle,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import DocumentPicker from 'react-native-document-picker';
+import { DocumentPicker, types } from '@react-native-documents/picker';
 import Voice from '@react-native-voice/voice';
 import { streamGeminiResponse, transcribeAudio, getApiKeys } from '../services/api';
 import { GoogleGenAI, Modality } from "@google/genai";
@@ -242,7 +242,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   const pickFile = async () => {
     try {
       const result = await DocumentPicker.pickSingle({
-        type: [DocumentPicker.types.allFiles],
+        type: [types.allFiles],
       });
       setSelectedFile({
         uri: result.uri,
