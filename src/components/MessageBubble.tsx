@@ -1,13 +1,50 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Linking, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Markdown from 'react-native-markdown-display';
-import { ChatMessage } from '../types';
+import { ChatMessage } from '../../types';
+import { SystemIcon } from './SystemIcon';
 
 interface MessageBubbleProps {
   message: ChatMessage;
   onEdit?: (text: string) => void;
 }
+
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    lineHeight: 28,
+    color: '#F3F4F6',
+  },
+  heading1: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#F3F4F6',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  heading2: {
+    fontSize: 20,
+    fontWeight: 'bold' as const,
+    color: '#F3F4F6',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  paragraph: {
+    marginBottom: 12,
+  },
+  link: {
+    color: '#60A5FA',
+    textDecorationLine: 'underline' as const,
+  },
+  code_inline: {
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontFamily: 'monospace',
+    color: '#F3F4F6',
+  },
+};
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit }) => {
   const isUser = message.role === 'user';
@@ -48,7 +85,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
     <View style={styles.container}>
       <View style={styles.contentWrapper}>
         <View style={styles.header}>
-          <Icon 
+          <SystemIcon 
             name={isUser ? "account" : "robot"} 
             size={16} 
             color={isUser ? "#60A5FA" : "#34D399"} 
@@ -60,7 +97,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
 
         <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
           {isThinking ? (
-            <View style={styles.thinkingContainer} accessibilityRole="status">
+            <View style={styles.thinkingContainer} accessibilityRole="progressbar">
               <Text style={styles.thinkingText}>Processing</Text>
               <View style={styles.dotsContainer}>
                 <View style={[styles.dot, styles.dot1]} />
@@ -72,7 +109,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
             <Text style={styles.userText}>{message.content}</Text>
           ) : (
             <View>
-              <Markdown rules={markdownRules} style={styles.markdown}>
+              <Markdown rules={markdownRules} style={markdownStyles}>
                 {message.content}
               </Markdown>
               {!message.isComplete && <View style={styles.cursor} />}
@@ -86,7 +123,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                 style={styles.actionButton}
                 accessibilityLabel={copied ? "Copied" : "Copy message"}
               >
-                <Icon 
+                <SystemIcon 
                   name={copied ? "check" : "content-copy"} 
                   size={12} 
                   color={copied ? "#4ADE80" : "#D1D5DB"} 
@@ -102,7 +139,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                   style={styles.actionButton}
                   accessibilityLabel="Edit message"
                 >
-                  <Icon name="pencil" size={12} color="#D1D5DB" />
+                  <SystemIcon name="pencil" size={12} color="#D1D5DB" />
                   <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>
               )}
@@ -113,7 +150,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                   style={[styles.actionButton, styles.exportButton]}
                   accessibilityLabel="Export message"
                 >
-                  <Icon name="download" size={12} color="#34D399" />
+                  <SystemIcon name="download" size={12} color="#34D399" />
                   <Text style={[styles.actionButtonText, styles.exportButtonText]}>Export</Text>
                 </TouchableOpacity>
               )}
@@ -125,7 +162,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                     style={[styles.actionButton, styles.sourcesButton]}
                     accessibilityLabel={`View ${message.groundingChunks?.length} sources`}
                   >
-                    <Icon name="web" size={12} color="#60A5FA" />
+                    <SystemIcon name="web" size={12} color="#60A5FA" />
                     <Text style={[styles.actionButtonText, styles.sourcesButtonText]}>
                       Sources ({message.groundingChunks?.length})
                     </Text>
@@ -142,7 +179,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                       <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                           <View style={styles.modalTitleContainer}>
-                            <Icon name="web" size={16} color="#60A5FA" />
+                            <SystemIcon name="web" size={14} color="#60A5FA" />
                             <Text style={styles.modalTitle}>Search Sources</Text>
                           </View>
                           <TouchableOpacity 
@@ -150,7 +187,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onEdit })
                             style={styles.closeButton}
                             accessibilityLabel="Close modal"
                           >
-                            <Icon name="close" size={18} color="#F3F4F6" />
+                            <SystemIcon name="close" size={16} color="#F3F4F6" />
                           </TouchableOpacity>
                         </View>
                         <ScrollView style={styles.modalScrollView}>
@@ -256,43 +293,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 28,
     color: '#F3F4F6',
-    whiteSpace: 'pre-wrap',
-  },
-  markdown: {
-    body: {
-      fontSize: 16,
-      lineHeight: 28,
-      color: '#F3F4F6',
-    },
-    heading1: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: '#F3F4F6',
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    heading2: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#F3F4F6',
-      marginTop: 12,
-      marginBottom: 6,
-    },
-    paragraph: {
-      marginBottom: 12,
-    },
-    link: {
-      color: '#60A5FA',
-      textDecorationLine: 'underline',
-    },
-    code_inline: {
-      backgroundColor: '#1F2937',
-      paddingHorizontal: 4,
-      paddingVertical: 2,
-      borderRadius: 4,
-      fontFamily: 'monospace',
-      color: '#F3F4F6',
-    },
   },
   codeBlockContainer: {
     marginVertical: 16,
