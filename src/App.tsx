@@ -10,7 +10,6 @@ import {
   Alert,
   AccessibilityInfo,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { ChatMessage, GroundingChunk, AttachedFile } from '../types';
 import { streamGeminiResponse } from './services/api';
 import { MessageBubble } from './components/MessageBubble';
