@@ -12,12 +12,39 @@ import {
   AccessibilityInfo,
   findNodeHandle,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { SystemIcon } from './SystemIcon';
-import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
-import Voice from '@react-native-voice/voice';
 import { streamGeminiResponse, transcribeAudio, getApiKeys } from '../services/api';
 import { GoogleGenAI, Modality } from "@google/genai";
+
+type VoiceModule = {
+  onSpeechStart?: () => void;
+  onSpeechEnd?: () => void;
+  onSpeechResults?: (e: { value?: string[] }) => void;
+  onSpeechError?: (e: unknown) => void;
+  start: (locale: string) => Promise<void>;
+  stop: () => Promise<void>;
+  destroy: () => Promise<void>;
+  removeAllListeners: () => void;
+};
+
+const getVoiceModule = (): VoiceModule | null => {
+  try {
+    const pkg = require('@react-native-voice/voice');
+    return pkg?.default ?? pkg;
+  } catch (error) {
+    return null;
+  }
+};
+
+const getDocumentPickerModule = () => {
+  try {
+    return require('@react-native-documents/picker');
+  } catch (error) {
+    return null;
+  }
+};
 
 interface ChatInputProps {
   onSendMessage: (content: string, file: any | null, youtubeLinks: string[], isUrlUnderstanding: boolean) => void;
@@ -34,7 +61,7 @@ export interface ChatInputHandle {
   focus: () => void;
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({ 
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   onSendMessage, 
   isLoading, 
   prefilledText, 
@@ -78,13 +105,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   // Setup Voice recognition
   useEffect(() => {
-    Voice.onSpeechStart = () => {
+    const voice = getVoiceModule();
+    if (!voice) {
+      return;
+    }
+
+    voice.onSpeechStart = () => {
       setIsRecording(true);
     };
-    Voice.onSpeechEnd = () => {
+    voice.onSpeechEnd = () => {
       setIsRecording(false);
     };
-    Voice.onSpeechResults = async (e) => {
+    voice.onSpeechResults = async (e) => {
       if (e.value && e.value[0]) {
         setIsRecording(false);
         setIsTranscribing(true);
@@ -98,16 +130,40 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
         }
       }
     };
-    Voice.onSpeechError = (e) => {
+    voice.onSpeechError = (e) => {
       console.error('Voice error:', e);
       setIsRecording(false);
       Alert.alert('Error', 'Voice recognition failed');
     };
 
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      void voice.destroy().then(() => voice.removeAllListeners());
     };
   }, [selectedFile, ytLinks, isUrlUnderstanding]);
+
+  const requestAudioPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+    const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+    return result === PermissionsAndroid.RESULTS.GRANTED;
+  };
+
+  const requestStoragePermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+
+    if (Platform.Version >= 33) {
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+      );
+      return result === PermissionsAndroid.RESULTS.GRANTED;
+    }
+
+    const permission =
+      Platform.Version <= 32
+        ? PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        : PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+    const result = await PermissionsAndroid.request(permission);
+    return result === PermissionsAndroid.RESULTS.GRANTED;
+  };
 
   // Live Mode Logic
   const startLiveMode = async () => {
@@ -216,11 +272,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   const toggleVoice = async () => {
     if (isLoading || isTranscribing) return;
+    const voice = getVoiceModule();
+    if (!voice) {
+      Alert.alert('Unsupported', 'Voice module is unavailable in this build.');
+      return;
+    }
+
+    const hasPermission = await requestAudioPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission needed', 'Microphone permission is required for voice input.');
+      return;
+    }
+
     if (isRecording) {
-      await Voice.stop();
+      await voice.stop();
     } else {
       try {
-        await Voice.start('en-US');
+        await voice.start('en-US');
       } catch (err) {
         Alert.alert('Error', 'Microphone access denied');
       }
@@ -240,9 +308,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   };
 
   const pickFile = async () => {
+    const picker = getDocumentPickerModule();
+    if (!picker) {
+      Alert.alert('Unsupported', 'File picker module is unavailable in this build.');
+      return;
+    }
+
+    const hasPermission = await requestStoragePermission();
+    if (!hasPermission) {
+      Alert.alert('Permission needed', 'Storage permission is required to select files.');
+      return;
+    }
+
     try {
-      const [result] = await pick({
-        type: [types.allFiles],
+      const [result] = await picker.pick({
+        type: [picker.types.allFiles],
       });
       setSelectedFile({
         uri: result.uri,
@@ -252,7 +332,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       setIsMenuOpen(false);
       inputRef.current?.focus();
     } catch (err: unknown) {
-      if (!isErrorWithCode(err) || err.code !== errorCodes.OPERATION_CANCELED) {
+      const pickerError = err as { code?: string };
+      if (!picker.isErrorWithCode(err) || pickerError.code !== picker.errorCodes.OPERATION_CANCELED) {
         Alert.alert('Error', 'Failed to pick file');
       }
     }
