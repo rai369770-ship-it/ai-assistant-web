@@ -1,50 +1,50 @@
-```
+```gitignore
 # Dependencies
 node_modules/
 
-# Compiled/Build artifacts
+# Build outputs
 dist/
 build/
-*.o
-*.obj
-*.exe
-*.dll
-*.so
-*.a
-*.out
+target/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py.class
-*.py.$py.class
 .Python
+env/
 venv/
 .venv/
-.env
-.env.local
-.env.*
+.ENV
+.python-version
+.pytest_cache/
+.mypy_cache/
+.coverage
 
 # Logs
 *.log
 
-# Editor/IDE
+# Environment variables
+.env
+.env.local
+.env.*
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# System
+# OS
 .DS_Store
 Thumbs.db
 
 # Coverage
 coverage/
 htmlcov/
-.coverage
+*.coverage
 
 # Compressed files
 *.zip
