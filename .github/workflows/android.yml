@@ -12,7 +12,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,14 +56,29 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Verify APK outputs
+        shell: bash
         run: |
-          ls -la android/app/build/outputs/apk/release/ || echo "Release APK not found"
+          set -euo pipefail
+          echo "Listing release output directory:"
+          ls -la android/app/build/outputs/apk/release/ || true
 
-      - name: Upload Release APK Artifact
+          shopt -s nullglob globstar
+          apk_files=(android/app/build/outputs/apk/release/**/*.apk)
+
+          if [ ${#apk_files[@]} -eq 0 ]; then
+            echo "ERROR: No APK files were produced under android/app/build/outputs/apk/release/."
+            exit 1
+          fi
+
+          echo "Found ${#apk_files[@]} APK file(s):"
+          printf ' - %s\n' "${apk_files[@]}"
+
+      - name: Upload Release APK Artifact(s)
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/**/*.apk
+          if-no-files-found: error
           retention-days: 30
 
       - name: Cleanup Gradle Cache
