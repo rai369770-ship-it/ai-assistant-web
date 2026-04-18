@@ -8,14 +8,14 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
-  AccessibilityInfo,
 } from 'react-native';
-import { ChatMessage, GroundingChunk, AttachedFile } from '../types';
+import { ChatMessage, AttachedFile } from '../types';
 import { streamGeminiResponse } from './services/api';
 import { MessageBubble } from './components/MessageBubble';
 import { ChatInput, ChatInputHandle } from './components/ChatInput';
+import { SystemIcon, IconName } from './components/SystemIcon';
 
-const SIMPLE_PROMPTS = [
+const SIMPLE_PROMPTS: { text: string; icon: IconName }[] = [
   { text: "Explain quantum computing principles simply.", icon: "lightbulb-on" },
   { text: "Analyze the attached code for security vulnerabilities.", icon: "shield-alert" },
   { text: "Summarize the key takeaways from a YouTube video.", icon: "youtube" },
@@ -29,7 +29,6 @@ const App: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string>('Ready');
   const [selectedPrompt, setSelectedPrompt] = useState<string>('');
   const [activeFile, setActiveFile] = useState<AttachedFile | null>(null);
-  const [isLiveActive, setIsLiveActive] = useState(false);
   
   const chatInputRef = useRef<ChatInputHandle>(null);
 
@@ -169,7 +168,7 @@ const App: React.FC = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconContainer}>
-        <Icon name="brain" size={32} color="#9CA3AF" />
+        <SystemIcon name="brain" size={30} color="#9CA3AF" />
       </View>
       <Text style={styles.emptyTitle}>How can I help you?</Text>
       <Text style={styles.emptySubtitle}>
@@ -184,7 +183,7 @@ const App: React.FC = () => {
             accessibilityLabel={prompt.text}
           >
             <View style={styles.promptIconContainer}>
-              <Icon name={prompt.icon} size={18} color="#9CA3AF" />
+              <SystemIcon name={prompt.icon} size={17} color="#9CA3AF" />
             </View>
             <Text style={styles.promptText}>{prompt.text}</Text>
           </TouchableOpacity>
@@ -207,7 +206,7 @@ const App: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Icon name="sparkles" size={18} color="#60A5FA" />
+          <SystemIcon name="sparkles" size={16} color="#60A5FA" />
           <Text style={styles.headerTitle}>AI assistant</Text>
         </View>
         <View style={styles.headerRight}>
@@ -216,7 +215,7 @@ const App: React.FC = () => {
             style={styles.newChatButton}
             accessibilityLabel="Start new chat"
           >
-            <Icon name="message-plus-outline" size={16} color="#FFFFFF" />
+            <SystemIcon name="message-plus-outline" size={14} color="#FFFFFF" />
             <Text style={styles.newChatButtonText}>Start New Chat</Text>
           </TouchableOpacity>
           {messages.length > 0 && (
@@ -225,7 +224,7 @@ const App: React.FC = () => {
               style={styles.clearButton}
               accessibilityLabel="Clear history"
             >
-              <Icon name="trash-can-outline" size={16} color="#9CA3AF" />
+              <SystemIcon name="trash-can-outline" size={14} color="#9CA3AF" />
             </TouchableOpacity>
           )}
         </View>
@@ -260,7 +259,6 @@ const App: React.FC = () => {
         statusMessage={statusMessage}
         onLiveTranscription={handleLiveTranscription}
         onLiveComplete={handleLiveComplete}
-        onLiveStateChange={setIsLiveActive}
       />
     </SafeAreaView>
   );

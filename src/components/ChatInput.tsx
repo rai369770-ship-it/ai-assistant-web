@@ -11,9 +11,10 @@ import {
   Alert,
   AccessibilityInfo,
   findNodeHandle,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { DocumentPicker, types } from '@react-native-documents/picker';
+import { SystemIcon } from './SystemIcon';
+import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
 import Voice from '@react-native-voice/voice';
 import { streamGeminiResponse, transcribeAudio, getApiKeys } from '../services/api';
 import { GoogleGenAI, Modality } from "@google/genai";
@@ -60,7 +61,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   const liveSessionRef = useRef<any>(null);
   
   const inputRef = useRef<TextInput>(null);
-  const menuButtonRef = useRef<TouchableOpacity>(null);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -241,7 +241,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
 
   const pickFile = async () => {
     try {
-      const result = await DocumentPicker.pickSingle({
+      const [result] = await pick({
         type: [types.allFiles],
       });
       setSelectedFile({
@@ -251,14 +251,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       });
       setIsMenuOpen(false);
       inputRef.current?.focus();
-    } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
+    } catch (err: unknown) {
+      if (!isErrorWithCode(err) || err.code !== errorCodes.OPERATION_CANCELED) {
         Alert.alert('Error', 'Failed to pick file');
       }
     }
   };
 
   const addYouTubeLink = () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert('Add YouTube Link', 'Enter the link directly in chat input for now.');
+      setIsMenuOpen(false);
+      return;
+    }
+
     Alert.prompt(
       'Add YouTube Link',
       'Enter a YouTube video URL to summarize or transcribe:',
@@ -311,7 +317,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   style={styles.removeButton}
                   accessibilityLabel="Remove file"
                 >
-                  <Icon name="close" size={14} color="#9CA3AF" />
+                  <SystemIcon name="close" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
               </View>
             )}
@@ -327,7 +333,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   style={styles.removeButton}
                   accessibilityLabel="Remove YouTube link"
                 >
-                  <Icon name="close" size={14} color="#9CA3AF" />
+                  <SystemIcon name="close" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
               </View>
             ))}
@@ -343,7 +349,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   style={styles.removeButton}
                   accessibilityLabel="Disable URL understanding"
                 >
-                  <Icon name="close" size={14} color="#60A5FA" />
+                  <SystemIcon name="close" size={14} color="#60A5FA" />
                 </TouchableOpacity>
               </View>
             )}
@@ -387,7 +393,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                   accessibilityLabel={isRecording ? "Stop recording" : "Start voice input"}
                   accessibilityHint="Press to record voice message"
                 >
-                  <Icon 
+                  <SystemIcon 
                     name={isTranscribing ? "loading" : isRecording ? "stop" : "microphone"} 
                     size={18} 
                     color={isRecording ? "#EF4444" : "#9CA3AF"} 
@@ -400,7 +406,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                 {/* Add Menu */}
                 <View style={styles.menuContainer}>
                   <TouchableOpacity
-                    ref={menuButtonRef}
                     onPress={() => setIsMenuOpen(!isMenuOpen)}
                     disabled={isRecording}
                     style={[
@@ -411,7 +416,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                     accessibilityHint="Press to add files or YouTube links"
                     accessibilityState={{ expanded: isMenuOpen }}
                   >
-                    <Icon name="plus" size={18} color="#9CA3AF" />
+                    <SystemIcon name="plus" size={18} color="#9CA3AF" />
                     <Text style={styles.buttonText}>Add</Text>
                   </TouchableOpacity>
 
@@ -422,7 +427,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                         style={styles.menuItem}
                         accessibilityLabel="Upload files"
                       >
-                        <Icon name="upload" size={16} color="#60A5FA" />
+                        <SystemIcon name="upload" size={16} color="#60A5FA" />
                         <Text style={styles.menuItemText}>Upload Files</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -430,7 +435,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                         style={styles.menuItem}
                         accessibilityLabel="Add YouTube link"
                       >
-                        <Icon name="youtube" size={16} color="#EF4444" />
+                        <SystemIcon name="youtube" size={16} color="#EF4444" />
                         <Text style={styles.menuItemText}>YouTube Link</Text>
                       </TouchableOpacity>
                       <View style={styles.menuSeparator} />
@@ -444,10 +449,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                         accessibilityState={{ checked: isUrlUnderstanding }}
                       >
                         <View style={styles.menuItemLeft}>
-                          <Icon name="web" size={16} color={isUrlUnderstanding ? "#60A5FA" : "#9CA3AF"} />
+                          <SystemIcon name="web" size={16} color={isUrlUnderstanding ? "#60A5FA" : "#9CA3AF"} />
                           <Text style={styles.menuItemText}>URL Understanding</Text>
                         </View>
-                        {isUrlUnderstanding && <Icon name="check" size={14} color="#60A5FA" />}
+                        {isUrlUnderstanding && <SystemIcon name="check" size={14} color="#60A5FA" />}
                       </TouchableOpacity>
                     </View>
                   )}
@@ -473,7 +478,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
                 ]}
                 accessibilityLabel={isMuted ? "Unmute" : "Mute"}
               >
-                <Icon 
+                <SystemIcon 
                   name={isMuted ? "microphone-off" : "microphone"} 
                   size={14} 
                   color="#FFFFFF" 
@@ -498,7 +503,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Icon 
+                <SystemIcon 
                   name={isLiveActive ? "stop-circle" : showLiveButton ? "radio" : "send"} 
                   size={18} 
                   color="#FFFFFF" 
@@ -533,7 +538,6 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: -1,
     overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
     borderWidth: 0,
   },
   contentContainer: {
