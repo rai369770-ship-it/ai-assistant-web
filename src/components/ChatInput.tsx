@@ -9,42 +9,13 @@ import {
   Modal,
   FlatList,
   Alert,
-  AccessibilityInfo,
-  findNodeHandle,
   Platform,
-  PermissionsAndroid,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Permissions from 'expo-permissions';
 import { SystemIcon } from './SystemIcon';
-import { streamGeminiResponse, transcribeAudio, getApiKeys } from '../services/api';
+import { streamGeminiResponse, getApiKeys } from '@/services/api';
 import { GoogleGenAI, Modality } from "@google/genai";
-
-type VoiceModule = {
-  onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
-  onSpeechResults?: (e: { value?: string[] }) => void;
-  onSpeechError?: (e: unknown) => void;
-  start: (locale: string) => Promise<void>;
-  stop: () => Promise<void>;
-  destroy: () => Promise<void>;
-  removeAllListeners: () => void;
-};
-
-const getVoiceModule = (): VoiceModule | null => {
-  try {
-    const pkg = require('@react-native-voice/voice');
-    return pkg?.default ?? pkg;
-  } catch (error) {
-    return null;
-  }
-};
-
-const getDocumentPickerModule = () => {
-  try {
-    return require('@react-native-documents/picker');
-  } catch (error) {
-    return null;
-  }
-};
 
 interface ChatInputProps {
   onSendMessage: (content: string, file: any | null, youtubeLinks: string[], isUrlUnderstanding: boolean) => void;
@@ -77,10 +48,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   const [isUrlUnderstanding, setIsUrlUnderstanding] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // Voice Input State
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  
   // Live Mode State
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -102,68 +69,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       if (onClearPrefill) onClearPrefill();
     }
   }, [prefilledText, onClearPrefill]);
-
-  // Setup Voice recognition
-  useEffect(() => {
-    const voice = getVoiceModule();
-    if (!voice) {
-      return;
-    }
-
-    voice.onSpeechStart = () => {
-      setIsRecording(true);
-    };
-    voice.onSpeechEnd = () => {
-      setIsRecording(false);
-    };
-    voice.onSpeechResults = async (e) => {
-      if (e.value && e.value[0]) {
-        setIsRecording(false);
-        setIsTranscribing(true);
-        try {
-          onSendMessage(e.value[0], selectedFile, ytLinks, isUrlUnderstanding);
-          setInput('');
-        } catch (err) {
-          Alert.alert('Error', 'Failed to send voice message');
-        } finally {
-          setIsTranscribing(false);
-        }
-      }
-    };
-    voice.onSpeechError = (e) => {
-      console.error('Voice error:', e);
-      setIsRecording(false);
-      Alert.alert('Error', 'Voice recognition failed');
-    };
-
-    return () => {
-      void voice.destroy().then(() => voice.removeAllListeners());
-    };
-  }, [selectedFile, ytLinks, isUrlUnderstanding]);
-
-  const requestAudioPermission = async (): Promise<boolean> => {
-    if (Platform.OS !== 'android') return true;
-    const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
-    return result === PermissionsAndroid.RESULTS.GRANTED;
-  };
-
-  const requestStoragePermission = async (): Promise<boolean> => {
-    if (Platform.OS !== 'android') return true;
-
-    if (Platform.Version >= 33) {
-      const result = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-      );
-      return result === PermissionsAndroid.RESULTS.GRANTED;
-    }
-
-    const permission =
-      Platform.Version <= 32
-        ? PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
-        : PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
-    const result = await PermissionsAndroid.request(permission);
-    return result === PermissionsAndroid.RESULTS.GRANTED;
-  };
 
   // Live Mode Logic
   const startLiveMode = async () => {
@@ -270,31 +175,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
     onLiveComplete?.();
   };
 
-  const toggleVoice = async () => {
-    if (isLoading || isTranscribing) return;
-    const voice = getVoiceModule();
-    if (!voice) {
-      Alert.alert('Unsupported', 'Voice module is unavailable in this build.');
-      return;
-    }
-
-    const hasPermission = await requestAudioPermission();
-    if (!hasPermission) {
-      Alert.alert('Permission needed', 'Microphone permission is required for voice input.');
-      return;
-    }
-
-    if (isRecording) {
-      await voice.stop();
-    } else {
-      try {
-        await voice.start('en-US');
-      } catch (err) {
-        Alert.alert('Error', 'Microphone access denied');
-      }
-    }
-  };
-
   const handleSubmit = () => {
     if (!input.trim() && !selectedFile && ytLinks.length === 0) {
       if (!isLiveActive) startLiveMode();
@@ -308,44 +188,28 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
   };
 
   const pickFile = async () => {
-    const picker = getDocumentPickerModule();
-    if (!picker) {
-      Alert.alert('Unsupported', 'File picker module is unavailable in this build.');
-      return;
-    }
-
-    const hasPermission = await requestStoragePermission();
-    if (!hasPermission) {
-      Alert.alert('Permission needed', 'Storage permission is required to select files.');
-      return;
-    }
-
     try {
-      const [result] = await picker.pick({
-        type: [picker.types.allFiles],
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
       });
-      setSelectedFile({
-        uri: result.uri,
-        name: result.name,
-        mimeType: result.type || 'application/octet-stream',
-      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedFile({
+          uri: asset.uri,
+          name: asset.name || 'unknown',
+          mimeType: asset.mimeType || 'application/octet-stream',
+        });
+      }
       setIsMenuOpen(false);
       inputRef.current?.focus();
     } catch (err: unknown) {
-      const pickerError = err as { code?: string };
-      if (!picker.isErrorWithCode(err) || pickerError.code !== picker.errorCodes.OPERATION_CANCELED) {
-        Alert.alert('Error', 'Failed to pick file');
-      }
+      console.error('File picker error:', err);
     }
   };
 
   const addYouTubeLink = () => {
-    if (Platform.OS !== 'ios') {
-      Alert.alert('Add YouTube Link', 'Enter the link directly in chat input for now.');
-      setIsMenuOpen(false);
-      return;
-    }
-
     Alert.prompt(
       'Add YouTube Link',
       'Enter a YouTube video URL to summarize or transcribe:',
@@ -370,7 +234,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
     // Mobile doesn't have keyboard shortcuts like desktop
   };
 
-  const isSendDisabled = isLoading || isRecording || isTranscribing;
+  const isSendDisabled = isLoading;
   const showLiveButton = !input.trim() && !selectedFile && ytLinks.length === 0;
 
   return (
@@ -378,8 +242,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
       {/* Status Message for Accessibility */}
       <Text accessibilityRole="alert" style={styles.srOnly}>
         {statusMessage}
-        {isRecording && " Recording voice input"}
-        {isTranscribing && " Transcribing audio"}
         {isLiveActive && ` Live mode active: ${liveStatus}`}
       </Text>
 
@@ -444,13 +306,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
               ref={inputRef}
               value={input}
               onChangeText={setInput}
-              placeholder={isRecording ? "Listening..." : "Ask anything..."}
+              placeholder="Ask anything..."
               placeholderTextColor="#6B7280"
-              editable={!isRecording && !isTranscribing}
+              editable={!isLoading}
               multiline
               style={[
                 styles.input,
-                isRecording && styles.recordingInput
               ]}
               accessibilityLabel="Chat input"
               accessibilityHint="Type your message here"
@@ -463,32 +324,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
           <View style={styles.leftButtons}>
             {!isLiveActive && (
               <>
-                {/* Voice Button */}
-                <TouchableOpacity
-                  onPress={toggleVoice}
-                  disabled={isLoading || isTranscribing}
-                  style={[
-                    styles.iconButton,
-                    isRecording && styles.recordingButton
-                  ]}
-                  accessibilityLabel={isRecording ? "Stop recording" : "Start voice input"}
-                  accessibilityHint="Press to record voice message"
-                >
-                  <SystemIcon 
-                    name={isTranscribing ? "loading" : isRecording ? "stop" : "microphone"} 
-                    size={18} 
-                    color={isRecording ? "#EF4444" : "#9CA3AF"} 
-                  />
-                  <Text style={[styles.buttonText, isRecording && styles.recordingButtonText]}>
-                    {isRecording ? 'Stop' : 'Voice'}
-                  </Text>
-                </TouchableOpacity>
-
                 {/* Add Menu */}
                 <View style={styles.menuContainer}>
                   <TouchableOpacity
                     onPress={() => setIsMenuOpen(!isMenuOpen)}
-                    disabled={isRecording}
                     style={[
                       styles.iconButton,
                       isMenuOpen && styles.menuButtonActive
@@ -699,9 +538,6 @@ const styles = StyleSheet.create({
     minHeight: 50,
     maxHeight: 200,
   },
-  recordingInput: {
-    color: '#F87171',
-  },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -731,17 +567,10 @@ const styles = StyleSheet.create({
   menuButtonActive: {
     backgroundColor: '#1F2937',
   },
-  recordingButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: '#EF4444',
-  },
   buttonText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#9CA3AF',
-  },
-  recordingButtonText: {
-    color: '#EF4444',
   },
   menuContainer: {
     position: 'relative',

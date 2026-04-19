@@ -10,10 +10,10 @@ import {
   Alert,
 } from 'react-native';
 import { ChatMessage, AttachedFile } from '../types';
-import { streamGeminiResponse } from './services/api';
-import { MessageBubble } from './components/MessageBubble';
-import { ChatInput, ChatInputHandle } from './components/ChatInput';
-import { SystemIcon, IconName } from './components/SystemIcon';
+import { streamGeminiResponse } from '@/services/api';
+import { MessageBubble } from '@/components/MessageBubble';
+import { ChatInput, ChatInputHandle } from '@/components/ChatInput';
+import { SystemIcon, IconName } from '@/components/SystemIcon';
 
 const SIMPLE_PROMPTS: { text: string; icon: IconName }[] = [
   { text: "Explain quantum computing principles simply.", icon: "lightbulb-on" },
@@ -22,7 +22,7 @@ const SIMPLE_PROMPTS: { text: string; icon: IconName }[] = [
   { text: "Transcribe this video in the original language without timestamps.", icon: "file-document" }
 ];
 
-const App: React.FC = () => {
+export default function Index() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string>('');
@@ -243,9 +243,6 @@ const App: React.FC = () => {
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={styles.messagesContainer}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => {
-          // Auto-scroll to bottom when content changes
-        }}
         accessibilityLabel="Chat messages"
       />
 
@@ -262,7 +259,7 @@ const App: React.FC = () => {
       />
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -418,5 +415,3 @@ const styles = StyleSheet.create({
     color: '#D1D5DB',
   },
 });
-
-export default App;

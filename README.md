@@ -1,35 +1,30 @@
-# AI Assistant - React Native
+# AI Assistant - Expo Project
 
-A cross-platform AI assistant application built with React Native for Android (and iOS) development. This is a complete rewrite of the web-based AI assistant using React Native with accessibility-first principles.
+A modern AI chat assistant built with Expo and React Native, featuring Google Gemini AI integration.
 
 ## Features
 
-- **Chat Interface**: Real-time chat with AI assistant powered by Google Gemini
-- **Voice Input**: Speech-to-text functionality using native voice recognition
-- **Live Mode**: Real-time voice conversation with AI (Gemini Live API)
-- **File Upload**: Support for uploading and analyzing files (images, documents, audio, video)
+- **AI Chat**: Interactive conversations with Google Gemini AI
+- **File Analysis**: Upload and analyze documents, images, and videos
 - **YouTube Integration**: Summarize and transcribe YouTube videos
-- **URL Understanding**: Browse and analyze web content
-- **Grounding Sources**: View search sources used by AI for responses
-- **Markdown Support**: Rich text rendering with code blocks
-- **Accessibility First**: Full accessibility support with screen reader compatibility
+- **URL Understanding**: Browse and extract information from web pages
+- **Live Voice Mode**: Real-time voice conversations with AI
+- **Modern UI**: Dark theme with smooth animations
 
 ## Tech Stack
 
-- **React Native** 0.76.6
-- **TypeScript** for type safety
-- **@google/genai** for Gemini AI integration
-- **react-native-vector-icons** for icons
-- **react-native-markdown-display** for markdown rendering
-- **@react-native-voice/voice** for speech recognition
-- **react-native-document-picker** for file selection
+- **Framework**: Expo SDK 53
+- **Language**: TypeScript
+- **Navigation**: Expo Router
+- **AI**: Google Generative AI (Gemini)
+- **UI Components**: React Native with custom styling
 
 ## Prerequisites
 
 - Node.js >= 18
-- React Native CLI
-- Android Studio (for Android development)
-- Xcode (for iOS development, macOS only)
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`)
+- iOS Simulator (for Mac) or Android Emulator
 
 ## Installation
 
@@ -38,71 +33,93 @@ A cross-platform AI assistant application built with React Native for Android (a
 npm install
 ```
 
-2. For iOS (macOS only):
-```bash
-cd ios && pod install && cd ..
-```
-
-3. For Android, ensure you have Android Studio and SDK configured.
-
-## Running the App
-
-### Android
-```bash
-npm run android
-```
-
-### iOS
-```bash
-npm run ios
-```
-
-### Start Metro Bundler
+2. Start the development server:
 ```bash
 npm start
 ```
+
+3. Run on your device:
+- Press `i` for iOS simulator
+- Press `a` for Android emulator
+- Scan QR code with Expo Go app on physical device
 
 ## Project Structure
 
 ```
 /workspace
+├── app/                    # Expo Router pages
+│   ├── _layout.tsx        # Root layout with navigation
+│   └── index.tsx          # Main chat screen
+├── assets/                 # Images and icons
 ├── src/
-│   ├── App.tsx              # Main application component
-│   ├── components/
-│   │   ├── ChatInput.tsx    # Input component with voice/live mode
-│   │   └── MessageBubble.tsx # Message display component
-│   ├── services/
-│   │   └── api.ts           # API integration with Gemini
-│   └── hooks/               # Custom hooks (if needed)
-├── types.ts                 # TypeScript type definitions
-├── app.json                 # React Native app configuration
-├── babel.config.js          # Babel configuration
-├── metro.config.js          # Metro bundler configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Dependencies and scripts
+│   ├── components/        # Reusable UI components
+│   │   ├── ChatInput.tsx
+│   │   ├── MessageBubble.tsx
+│   │   └── SystemIcon.tsx
+│   └── services/          # API and business logic
+│       └── api.ts
+├── types.ts               # TypeScript type definitions
+├── app.json              # Expo configuration
+├── babel.config.js       # Babel configuration
+├── package.json          # Dependencies
+└── tsconfig.json         # TypeScript configuration
 ```
 
-## Accessibility Features
+## Configuration
 
-- All interactive elements have `accessibilityLabel` props
-- Status messages use `accessibilityRole="alert"`
-- Proper focus management for screen readers
-- High contrast colors for visibility
-- Touch targets meet minimum size requirements (44x44 points)
-- Semantic HTML equivalents using React Native accessibility props
+### App Settings (app.json)
 
-## API Integration
+- App name and slug
+- Bundle identifiers for iOS/Android
+- Permissions (camera, microphone, storage)
+- Splash screen and icon configuration
 
-The app uses Google Gemini API with:
-- **gemini-2.5-flash** for standard chat
-- **gemini-3.1-flash-live-preview** for live voice mode
-- API keys are fetched from a remote key pool service
+### API Keys
+
+The app fetches API keys dynamically from a remote key pool service. No local configuration needed.
+
+## Available Scripts
+
+- `npm start` - Start Expo development server
+- `npm run android` - Run on Android device/emulator
+- `npm run ios` - Run on iOS simulator
+- `npm run web` - Run in web browser
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - Run TypeScript type checking
+
+## Permissions
+
+The app requests the following permissions:
+
+- **Microphone**: For voice input and live conversations
+- **Camera**: For document scanning and image capture
+- **Photo Library**: For selecting images and files
+- **Storage**: For file access and caching
+
+## Troubleshooting
+
+### Build Issues
+
+Clear cache and reinstall:
+```bash
+rm -rf node_modules
+npm install
+npx expo start -c
+```
+
+### Permission Issues
+
+Ensure you've granted all necessary permissions in your device settings.
+
+### API Errors
+
+Check your internet connection and verify the API key pool service is accessible.
 
 ## License
 
-MIT
+MIT License - See LICENSE file for details.
 
 ## Credits
 
 Developed by stech-vision team
-Leader/Director: Sujan Rai from Nepal Asia
+Lead: Sujan Rai
