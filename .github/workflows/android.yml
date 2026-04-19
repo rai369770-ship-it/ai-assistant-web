@@ -32,10 +32,13 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+          npm install expo-modules-core@1.12.0 --save-exact --legacy-peer-deps
 
       - name: Prebuild Android native project
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --clean --npm --no-install
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew

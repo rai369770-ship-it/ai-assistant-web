@@ -51,7 +51,7 @@
   "private": true,
   "expo": {
     "install": {
-      "exclude": []
+      "exclude": ["expo-modules-core"]
     }
   }
 }
