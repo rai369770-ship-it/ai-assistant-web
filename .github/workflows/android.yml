@@ -35,7 +35,7 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
-          npm install expo-modules-core@1.12.0 --save-exact --legacy-peer-deps
+          npm install expo-modules-core@~2.2.0 --save-exact --legacy-peer-deps
           npm install ajv@^8.12.0 --save --legacy-peer-deps
 
       - name: Prebuild Android native project
