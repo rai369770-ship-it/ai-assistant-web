@@ -48,10 +48,5 @@
     "prettier": "2.8.8",
     "typescript": "~5.8.0"
   },
-  "private": true,
-  "expo": {
-    "install": {
-      "exclude": ["expo-modules-core"]
-    }
-  }
+  "private": true
 }
