@@ -40,12 +40,6 @@
     "plugins": [
       "expo-router",
       [
-        "expo-speech",
-        {
-          "speechRecognition": true
-        }
-      ],
-      [
         "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for document scanning."
