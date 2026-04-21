@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
-import * as ExpoPermissions from 'expo-permissions';
+import * as Camera from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
 
 export const requestAllPermissions = async () => {
   if (Platform.OS === 'android') {
@@ -34,13 +35,11 @@ export const requestAllPermissions = async () => {
       console.error('Permission request error:', err);
     }
   } else {
-    // iOS uses expo-permissions
+    // iOS uses module-specific permission methods
     try {
-      await ExpoPermissions.askAsync(
-        ExpoPermissions.CAMERA,
-        ExpoPermissions.AUDIO_RECORDING,
-        ExpoPermissions.MEDIA_LIBRARY
-      );
+      await Camera.Camera.requestCameraPermissionsAsync();
+      await Camera.Camera.requestMicrophonePermissionsAsync();
+      await MediaLibrary.requestPermissionsAsync();
     } catch (err) {
       console.warn('iOS permission error:', err);
     }
