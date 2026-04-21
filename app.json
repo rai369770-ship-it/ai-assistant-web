@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AI Assistant",
-    "slug": "ai-assistant-expo",
+    "name": "SToolkit",
+    "slug": "stoolkit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +20,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.stechvision.aiassistant",
+      "bundleIdentifier": "com.stoolkit.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to the microphone for voice input.",
-        "NSCameraUsageDescription": "This app needs camera access to scan documents and capture images.",
+        "NSMicrophoneUsageDescription": "This app needs access to the microphone for voice recording.",
+        "NSCameraUsageDescription": "This app needs camera access to capture images and videos.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select images."
       }
     },
@@ -32,12 +32,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0F19"
       },
-      "package": "com.stechvision.aiassistant",
+      "package": "com.stoolkit.app",
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE",
+        "MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -49,7 +51,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for document scanning."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for capturing images and videos."
         }
       ],
       [
@@ -73,7 +75,7 @@
         }
       ]
     ],
-    "scheme": "ai-assistant-expo",
+    "scheme": "stoolkit",
     "experiments": {
       "typedRoutes": true
     }
