@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as Permissions from 'expo-permissions';
 import { SystemIcon } from './SystemIcon';
 import { streamGeminiResponse, getApiKeys } from '@/services/api';
 import { GoogleGenAI, Modality } from "@google/genai";
@@ -99,12 +98,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(({
               speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
               },
-              systemInstruction: "You're Mero AI assistant web version. You're developed by sujan Rai under builgit project. Your aim is to chat and interact with the users. You can interact naturally like human. You can express emotions like humans. You are Maya AI voice of Mero ai assistant. Behave like humans. Play roles given by users as anything. You will use female gender to interact first. User can ask you to change your gender. Then change. Your primary language is Hindi.\nUse markdown to respond. Make headings and paragraphs and links. Use contextual emojies. Use casual tone.",
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 8192,
+              },
+              systemInstruction: {
+                parts: [
+                  {
+                    text: "You're Mero AI assistant web version. You're developed by sujan Rai under builgit project. Your aim is to chat and interact with the users. You can interact naturally like human. You can express emotions like humans. You are Maya AI voice of Mero ai assistant. Behave like humans. Play roles given by users as anything. You will use female gender to interact first. User can ask you to change your gender. Then change. Your primary language is Hindi.\nUse markdown to respond. Make headings and paragraphs and links. Use contextual emojies. Use casual tone.",
+                  },
+                ],
+              },
               tools: [{ googleSearch: {} }],
-              outputAudioTranscription: {},
-              inputAudioTranscription: {},
-              temperature: 0.7,
-              maxOutputTokens: 8192,
             },
             callbacks: {
               onopen: () => {
