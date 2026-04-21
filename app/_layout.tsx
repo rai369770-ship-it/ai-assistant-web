@@ -1,13 +1,38 @@
 import React from 'react';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 
-export default function RootLayout() {
+export default function TabLayout() {
   return (
-    <Stack
+    <Tabs
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#0B0F19' },
+        tabBarStyle: { display: 'none' },
       }}
-    />
+    >
+      <Tabs.Screen
+        name="tools"
+        options={{
+          title: 'Tools',
+        }}
+      />
+      <Tabs.Screen
+        name="articles"
+        options={{
+          title: 'Articles',
+        }}
+      />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Favorites',
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+        }}
+      />
+    </Tabs>
   );
 }

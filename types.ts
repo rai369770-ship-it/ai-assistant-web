@@ -1,30 +1,19 @@
-export type Role = 'user' | 'assistant' | 'system';
-
-export interface GroundingChunk {
-  web?: {
-    uri: string;
-    title: string;
-  };
-}
-
-export interface ChatMessage {
-  role: Role;
-  content: string;
-  reasoning_details?: string;
-  groundingChunks?: GroundingChunk[];
-  isComplete?: boolean;
-}
-
-export interface AttachedFile {
-  file: any;
-  uri?: string;
-  mimeType: string;
+export interface Tool {
+  id: string;
   name: string;
+  description: string;
+  category: ToolCategory;
 }
 
-export interface ChatState {
-  messages: ChatMessage[];
-  isLoading: boolean;
-  error: string | null;
-  apiKey: string;
+export type ToolCategory = 
+  | 'AI Tools'
+  | 'Audio Tools'
+  | 'Productivity Tools'
+  | 'Video Tools'
+  | 'Image Tools'
+  | 'Device Tools';
+
+export interface CategoryGroup {
+  name: ToolCategory;
+  tools: Tool[];
 }
