@@ -26,7 +26,6 @@
     "expo-image": "~2.0.0",
     "expo-linking": "~7.0.0",
     "expo-media-library": "~17.0.0",
-    "expo-permissions": "~15.0.0",
     "expo-router": "~5.0.0",
     "expo-screen-capture": "~1.0.0",
     "expo-speech": "~13.0.0",
