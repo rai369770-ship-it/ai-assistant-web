@@ -1,7 +1,7 @@
 {
   "name": "stoolkit",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.0",
+    "@react-navigation/bottom-tabs": "^6.6.0",
+    "@react-navigation/native": "^6.1.0",
     "expo": "~53.0.0",
     "expo-av": "~15.0.0",
     "expo-blur": "~14.0.0",
@@ -25,8 +27,6 @@
     "expo-image": "~2.0.0",
     "expo-linking": "~7.0.0",
     "expo-media-library": "~17.0.0",
-    "expo-router": "~5.0.0",
-    "expo-screen-capture": "~1.0.0",
     "expo-speech": "~13.0.0",
     "expo-status-bar": "~2.0.0",
     "expo-system-ui": "~5.0.0",

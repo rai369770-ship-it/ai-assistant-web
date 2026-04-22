@@ -80,8 +80,8 @@ export const requestAllPermissions = async () => {
   } else {
     // iOS uses module-specific permission methods
     try {
-      await Camera.Camera.requestCameraPermissionsAsync();
-      await Camera.Camera.requestMicrophonePermissionsAsync();
+      await Camera.requestCameraPermissionsAsync();
+      await Camera.requestMicrophonePermissionsAsync();
       await MediaLibrary.requestPermissionsAsync();
     } catch (err) {
       console.warn('iOS permission error:', err);
