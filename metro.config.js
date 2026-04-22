@@ -15,11 +15,28 @@ config.transformer = {
 };
 
 // Exclude unnecessary files from the bundle
-const blockList = config.resolver.blockList || [];
-config.resolver.blockList = [
-  ...blockList,
+const blockList = config.resolver.blockList;
+let newBlockList = [
   /.*\.test\..*/,
   /.*\.spec\..*/,
 ];
+
+// If there's an existing blockList, handle it appropriately
+if (Array.isArray(blockList)) {
+  newBlockList = [...blockList, ...newBlockList];
+} else if (blockList instanceof RegExp) {
+  newBlockList = [blockList, ...newBlockList];
+} else if (blockList) {
+  // For any other truthy blockList, try to convert to array or use as-is
+  try {
+    const converted = Array.from(blockList);
+    newBlockList = [...converted, ...newBlockList];
+  } catch {
+    // If conversion fails, just use our new patterns
+    newBlockList = newBlockList;
+  }
+}
+
+config.resolver.blockList = newBlockList;
 
 module.exports = config;
