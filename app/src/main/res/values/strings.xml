@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SToolkit</string>
+    
+    <!-- Welcome Screen -->
+    <string name="welcome_title">Welcome to SToolkit</string>
+    <string name="welcome_description">Welcome to Stoolkit, your all-in-one multi-toolkit for Android. This app brings together powerful AI tools, productivity features, and utilities for documents, images, audio, and video—all in one place. Designed to simplify your daily tasks, Stoolkit helps you create, manage, and explore with ease. Discover useful articles, smart features, and practical resources that support your work and learning. Simple, fast, and efficient, Stoolkit gives you everything you need to do more in a single app.</string>
+    <string name="developed_by">Developed by:</string>
+    <string name="developer_link">Blind Tech Nexus</string>
+    <string name="developer_url">https://blindtechnexus.pages.dev</string>
+    <string name="instruction_text">Click continue to start using the app.</string>
+    <string name="continue_button">Continue</string>
+    <string name="loading">Loading…</string>
+    
+    <!-- Permission Screen -->
+    <string name="permission_title">Grant Access</string>
+    <string name="permission_description">SToolkit needs access to your files, camera, and microphone for full functionality. Please grant the necessary permissions in the settings.</string>
+    <string name="grant_access">Grant Access</string>
+    <string name="permission_granted">Permission Granted</string>
+    <string name="permission_denied">Permission Denied</string>
+    <string name="all_files_access_required">All files access required</string>
+    <string name="all_files_access_message">All files permissions is required for files operations. Allow by granting in the setting.</string>
+    
+    <!-- Navigation -->
+    <string name="nav_tools">Tools</string>
+    <string name="nav_articles">Articles</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="nav_more">More</string>
+    
+    <!-- Tools Categories -->
+    <string name="category_ai_tools">AI Tools</string>
+    <string name="category_audio_tools">Audio Tools</string>
+    <string name="category_productivity_tools">Productivity Tools</string>
+    <string name="category_video_tools">Video Tools</string>
+    <string name="category_image_tools">Image Tools</string>
+    <string name="category_device_tools">Device Tools</string>
+    
+    <!-- Tool Names -->
+    <string name="tool_stoolkit_ai">SToolkit AI</string>
+    <string name="tool_auto_tts">Auto TTS</string>
+    <string name="tool_audio_video_transcriber">Audio &amp; Video Transcriber</string>
+    <string name="tool_youtube_toolkit">YouTube Toolkit</string>
+    <string name="tool_ai_image_generator">AI Image Generator &amp; Editor</string>
+    <string name="tool_ai_image_analysis">AI Image Analysis</string>
+    <string name="tool_ai_personal_assistant">AI Personal Assistant</string>
+    <string name="tool_ai_future_predictor">AI Future Predictor</string>
+    <string name="tool_text_to_speech">Text to Speech Converter</string>
+    <string name="tool_voice_recorder">Voice Recorder</string>
+    <string name="tool_media_player">Media Player</string>
+    <string name="tool_pdf_toolkit">PDF Toolkit</string>
+    <string name="tool_notepad">Notepad</string>
+    <string name="tool_reminder">Reminder</string>
+    <string name="tool_screen_recorder">Screen Recorder</string>
+    <string name="tool_camera">Camera</string>
+    <string name="tool_image_toolkit">Image Toolkit</string>
+    <string name="tool_device_info">Device Info</string>
+    
+    <!-- Tool Descriptions -->
+    <string name="desc_stoolkit_ai">Multi-model native AI for writing, coding, and planning anything.</string>
+    <string name="desc_auto_tts">Multilingual text-to-speech with automatic language detection and synthesis.</string>
+    <string name="desc_audio_video_transcriber">Transcribe your audio and video files accurately using AI.</string>
+    <string name="desc_youtube_toolkit">Download, summarize, and transcribe YouTube videos effortlessly.</string>
+    <string name="desc_ai_image_generator">Generate and edit stunning images using advanced AI technology.</string>
+    <string name="desc_ai_image_analysis">Analyze images with AI to extract insights and information.</string>
+    <string name="desc_ai_personal_assistant">Create custom AI assistants to chat, talk, and complete tasks.</string>
+    <string name="desc_ai_future_predictor">Explore AI-powered predictions and insights about future trends.</string>
+    <string name="desc_text_to_speech">Multilingual TTS synthesizer with local and online engine support.</string>
+    <string name="desc_voice_recorder">Record your voice with customizable quality and format options.</string>
+    <string name="desc_media_player">Play and listen to your favorite audio and video files.</string>
+    <string name="desc_pdf_toolkit">Create, read, and organize PDF documents with ease.</string>
+    <string name="desc_notepad">Write, edit, and manage your notes efficiently.</string>
+    <string name="desc_reminder">Set and manage reminders to stay organized and on track.</string>
+    <string name="desc_screen_recorder">Record your screen with customizable settings and options.</string>
+    <string name="desc_camera">Capture photos and videos with advanced camera features.</string>
+    <string name="desc_image_toolkit">Edit, enhance, and transform your images with powerful tools.</string>
+    <string name="desc_device_info">View detailed information about your device specifications.</string>
+    
+    <!-- Common -->
+    <string name="coming_soon">Coming soon</string>
+    <string name="more_tools_coming_soon">More tools coming soon</string>
+    <string name="articles_coming_soon">Articles coming soon</string>
+    <string name="favorites_coming_soon">Favorites coming soon</string>
+    <string name="more_coming_soon">More coming soon</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+    
+    <!-- Accessibility -->
+    <string name="accessibility_tools_list">Tools list</string>
+    <string name="accessibility_category">Category: %1$s</string>
+    <string name="accessibility_tool_item">%1$s: %2$s</string>
+    <string name="accessibility_opens_tool_details">Opens tool details</string>
+    <string name="accessibility_more_options">More options</string>
+    <string name="accessibility_opens_more_menu">Opens more options menu</string>
+    <string name="accessibility_tab">Tab: %1$s</string>
+    <string name="accessibility_selected">, selected</string>
+    <string name="accessibility_developer_link">Opens Blind Tech Nexus website</string>
+    <string name="accessibility_continue_button">Continue to app</string>
+</resources>
