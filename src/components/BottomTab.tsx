@@ -18,7 +18,7 @@ export const BottomTab: React.FC<BottomTabProps> = ({ tabs, activeTab, onTabPres
             style={[styles.tab, isActive && styles.activeTab]}
             onPress={() => onTabPress(tab)}
             accessibilityRole="tab"
-            accessibilitySelected={isActive}
+            accessibilityState={{ selected: isActive }}
             accessibilityLabel={`${tab}${isActive ? ', selected' : ''}`}
           >
             <Text style={[styles.tabText, isActive && styles.activeTabText]}>

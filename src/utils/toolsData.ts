@@ -1,4 +1,4 @@
-import { Tool, CategoryGroup } from '../types';
+import { Tool, CategoryGroup } from '../../types';
 
 export const toolsData: Tool[] = [
   // AI Tools

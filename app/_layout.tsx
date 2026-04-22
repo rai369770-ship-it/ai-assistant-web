@@ -15,7 +15,7 @@ const Tab = createBottomTabNavigator();
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer independent={true}>
+      <NavigationContainer>
         <StatusBar style="light" />
         <Tab.Navigator
           screenOptions={{

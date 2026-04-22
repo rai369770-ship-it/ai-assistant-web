@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Platform, PermissionsAndroid } from 'react-native';
-import * as Camera from 'expo-camera';
+import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 
 export const requestAllPermissions = async () => {
