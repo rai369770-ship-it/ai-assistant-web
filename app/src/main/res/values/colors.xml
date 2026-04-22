@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary brand colors -->
+    <color name="primary">#60A5FA</color>
+    <color name="primary_variant">#3B82F6</color>
+    <color name="on_primary">#0B0F19</color>
+    
+    <!-- Background colors -->
+    <color name="background">#0B0F19</color>
+    <color name="surface">#1F2937</color>
+    <color name="surface_variant">#1F2937</color>
+    
+    <!-- Text colors -->
+    <color name="on_background">#FFFFFF</color>
+    <color name="on_surface">#F3F4F6</color>
+    <color name="on_surface_medium">#E5E7EB</color>
+    <color name="on_surface_disabled">#9CA3AF</color>
+    
+    <!-- Secondary colors -->
+    <color name="secondary">#6B7280</color>
+    <color name="secondary_container">#374151</color>
+    <color name="on_secondary">#FFFFFF</color>
+    
+    <!-- Error colors -->
+    <color name="error">#EF4444</color>
+    <color name="on_error">#FFFFFF</color>
+    
+    <!-- Border colors -->
+    <color name="border">#4B5563</color>
+    <color name="border_light">#374151</color>
+    
+    <!-- Transparent colors -->
+    <color name="transparent">#00000000</color>
+    <color name="surface_transparent">#CC1F2937</color>
+    <color name="border_transparent">#804B5563</color>
+    
+    <!-- Status bar -->
+    <color name="status_bar">#0B0F19</color>
+    <color name="navigation_bar">#0B0F19</color>
+</resources>

@@ -1,51 +1,45 @@
 ```
-# Dependencies
-node_modules/
+# Android build artifacts
+*.apk
+*.aar
+*.aab
+*.dex
 
-# Build outputs
-dist/
+# Android build outputs
 build/
-.next/
-out/
+.externalNativeBuild/
+.intermediates/
+outputs/
 
-# Environment variables
-.env
-.env.local
-*.env.*
+# Gradle
+.gradle/
+gradle-wrapper.jar
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.ENV
+# Local configuration file (sdk path, etc)
+local.properties
 
-# Logs
-*.log
+# Android Studio navigation editor temp files
+.navigation/
+
+# Android Studio profiler capture folder
+captures/
+
+# Code coverage reports
+**/coverage/***
+
+# Unit test reports
+**/test-results/**
+**/reports/**
 
 # OS generated files
 .DS_Store
 Thumbs.db
 
-# Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
+# Logs
+*.log
 
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Cache directories
-.cache/
-.mypy_cache/
-.pytest_cache/
-.nyc_output/
+# Environment variables
+.env
+.env.local
+*.env.*
 ```
