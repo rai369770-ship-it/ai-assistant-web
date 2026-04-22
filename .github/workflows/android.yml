@@ -7,7 +7,9 @@ on:
     branches: [main, master]
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
+  ORG_GRADLE_PROJECT_org.gradle.caching: "true"
+  ORG_GRADLE_PROJECT_org.gradle.parallel: "true"
 
 jobs:
   build:
@@ -17,77 +19,122 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Enable KVM group perms (for faster emulator if needed)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-          CI=1 npx expo install --fix
-
-      - name: Prebuild Android native project
-        run: npx expo prebuild --platform android --clean --no-install
+        with:
+          packages: 'platform-tools,platforms;android-34,build-tools;34.0.0'
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        run: chmod +x gradlew
 
-      - name: Download Gradle Wrapper jar
+      - name: Download Gradle Wrapper jar (if missing)
         run: |
-          cd android
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Downloading Gradle Wrapper jar..."
             curl -L https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+            echo "Verifying downloaded jar..."
+            ls -la gradle/wrapper/gradle-wrapper.jar
+            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "ERROR: Failed to download or verify Gradle Wrapper jar"
+              exit 1
+            fi
+          else
+            echo "Gradle Wrapper jar already exists."
           fi
 
-      - name: Verify Android project structure
+      - name: Verify project structure
         run: |
-          ls -la android/
-          ls -la android/app/
-          ls -la android/app/src/main/
+          echo "=== Project Root ==="
+          ls -la
+          echo "=== App Directory ==="
+          ls -la app/
+          echo "=== Main Source Directory ==="
+          ls -la app/src/main/
+          echo "=== Java/Kotlin Source Directory ==="
+          ls -la app/src/main/java/
+          echo "=== Resources Directory ==="
+          ls -la app/src/main/res/
+          echo "=== Gradle Wrapper ==="
+          ls -la gradle/wrapper/
 
-      - name: Build Android Release APK
+      - name: Clean previous builds and Gradle cache
         run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew clean --no-daemon || true
+          rm -rf ~/.gradle/caches/build-cache-* || true
+
+      - name: Build Android Unsigned Release APK
+        run: |
+          echo "Building unsigned release APK..."
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          echo "Build completed."
 
       - name: Verify APK outputs
         shell: bash
         run: |
           set -euo pipefail
-          echo "Listing release output directory:"
-          ls -la android/app/build/outputs/apk/release/ || true
+          echo "=== Listing release output directory ==="
+          ls -la app/build/outputs/apk/release/ || true
 
           shopt -s nullglob globstar
-          apk_files=(android/app/build/outputs/apk/release/**/*.apk)
+          apk_files=(app/build/outputs/apk/release/**/*.apk)
 
           if [ ${#apk_files[@]} -eq 0 ]; then
-            echo "ERROR: No APK files were produced under android/app/build/outputs/apk/release/."
+            echo "ERROR: No APK files were produced under app/build/outputs/apk/release/."
             exit 1
           fi
 
-          echo "Found ${#apk_files[@]} APK file(s):"
+          echo "=== Found ${#apk_files[@]} APK file(s) ==="
           printf ' - %s\n' "${apk_files[@]}"
+          
+          # Display APK file sizes
+          for apk in "${apk_files[@]}"; do
+            echo "APK: $apk ($(du -h "$apk" | cut -f1))"
+          done
 
       - name: Upload Release APK Artifact(s)
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: android/app/build/outputs/apk/release/**/*.apk
+          name: app-release-unsigned-apk
+          path: app/build/outputs/apk/release/**/*.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Create APK checksums
+        run: |
+          cd app/build/outputs/apk/release/
+          for apk in *.apk; do
+            if [ -f "$apk" ]; then
+              sha256sum "$apk" > "${apk}.sha256"
+              echo "Created checksum for $apk"
+            fi
+          done
+          ls -la
+
+      - name: Upload APK Checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-checksums
+          path: app/build/outputs/apk/release/**/*.sha256
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Cleanup Gradle Cache
         if: always()
         run: |
+          echo "Cleaning up Gradle cache to save disk space..."
           rm -rf ~/.gradle/caches
+          rm -rf .gradle
+          echo "Cleanup completed."
