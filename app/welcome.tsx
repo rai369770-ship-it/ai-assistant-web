@@ -10,12 +10,12 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 import * as PermissionsAndroid from 'react-native';
 import * as Camera from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 
-const CONFIG_PATH = `${RNFS.DocumentDirectoryPath}/settings.json`;
+const CONFIG_PATH = `${FileSystem.documentDirectory}settings.json`;
 
 interface Settings {
   isFirstRun?: boolean;
@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
 
   const saveSettings = async (data: Settings) => {
     try {
-      await RNFS.writeFile(CONFIG_PATH, JSON.stringify(data), 'utf8');
+      await FileSystem.writeAsStringAsync(CONFIG_PATH, JSON.stringify(data), { encoding: FileSystem.EncodingType.UTF8 });
     } catch (error) {
       console.error('Error saving settings:', error);
     }
@@ -35,9 +35,9 @@ export default function WelcomeScreen() {
 
   const loadSettings = async (): Promise<Settings | null> => {
     try {
-      const exists = await RNFS.exists(CONFIG_PATH);
-      if (exists) {
-        const content = await RNFS.readFile(CONFIG_PATH, 'utf8');
+      const fileInfo = await FileSystem.getInfoAsync(CONFIG_PATH);
+      if (fileInfo.exists) {
+        const content = await FileSystem.readAsStringAsync(CONFIG_PATH, { encoding: FileSystem.EncodingType.UTF8 });
         return JSON.parse(content);
       }
       return null;
