@@ -1,6 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, Text, BackHandler } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, FlatList, StyleSheet, SafeAreaView, Text } from 'react-native';
 import { CategoryHeader } from '@/components/CategoryHeader';
 import { ToolItem } from '@/components/ToolItem';
 import { Toast } from '@/components/Toast';
@@ -9,8 +8,6 @@ import { getToolsByCategory } from '@/utils/toolsData';
 export default function ToolsScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const exitAttemptsRef = React.useRef(0);
-  const exitTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const categories = getToolsByCategory();
 
@@ -23,45 +20,6 @@ export default function ToolsScreen() {
   const handleToolPress = (toolName: string) => {
     showToast('Coming soon');
   };
-
-  // Handle back button press - exit app on 4th tab screen
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        const now = Date.now();
-        
-        if (exitTimeoutRef.current) {
-          clearTimeout(exitTimeoutRef.current);
-        }
-        
-        if (exitAttemptsRef.current === 0 || now - (exitAttemptsRef.current * 1000) > 2000) {
-          exitAttemptsRef.current = 1;
-        } else {
-          exitAttemptsRef.current += 1;
-        }
-        
-        if (exitAttemptsRef.current >= 4) {
-          BackHandler.exitApp();
-          return true;
-        }
-        
-        exitTimeoutRef.current = setTimeout(() => {
-          exitAttemptsRef.current = 0;
-        }, 2000);
-        
-        return true;
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => {
-        subscription.remove();
-        if (exitTimeoutRef.current) {
-          clearTimeout(exitTimeoutRef.current);
-        }
-      };
-    }, [])
-  );
 
   const renderCategory = ({ item }: { item: { name: string; tools: any[] } }) => (
     <View>

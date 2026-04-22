@@ -10,7 +10,7 @@ import {
   Alert,
   PermissionsAndroid,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import RNFS from 'react-native-fs';
 import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
@@ -22,7 +22,7 @@ interface Settings {
 }
 
 export default function WelcomeScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const saveSettings = async (data: Settings) => {
@@ -141,7 +141,7 @@ export default function WelcomeScreen() {
 
     // Navigate to Tools tab after permissions
     setTimeout(() => {
-      (navigation as any).getParent()?.navigate('Tools');
+      router.replace('/tools');
     }, 500);
   };
 
