@@ -1,7 +1,7 @@
 {
   "name": "stoolkit",
   "version": "1.0.0",
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -17,6 +17,7 @@
     "@react-navigation/bottom-tabs": "^6.6.0",
     "@react-navigation/native": "^6.1.0",
     "expo": "~53.0.0",
+    "expo-router": "~4.0.0",
     "expo-av": "~15.0.0",
     "expo-blur": "~14.0.0",
     "expo-camera": "~16.0.0",
@@ -48,7 +49,8 @@
     "babel-plugin-module-resolver": "^5.0.0",
     "eslint": "^9.0.0",
     "prettier": "2.8.8",
-    "typescript": "~5.8.0"
+    "typescript": "~5.8.0",
+    "expo-splash-screen": "~0.29.0"
   },
   "private": true
 }
