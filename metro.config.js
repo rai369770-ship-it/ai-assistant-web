@@ -2,6 +2,9 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
+// Required for expo-router
+config.resolver.unstable_enablePackageExports = true;
+
 // Optimize for smaller bundle size
 config.transformer = {
   ...config.transformer,
