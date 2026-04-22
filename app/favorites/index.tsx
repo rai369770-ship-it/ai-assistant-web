@@ -1,33 +1,51 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, SafeAreaView, Text } from 'react-native';
-import { useRouter } from 'expo-router';
-import { TopBar } from '@/components/TopBar';
-import { BottomTab } from '@/components/BottomTab';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, SafeAreaView, Text, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Toast } from '@/components/Toast';
 
-const TABS = ['Tools', 'Articles', 'Favorites', 'More'];
-
 export default function FavoritesScreen() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState('Favorites');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const exitAttemptsRef = React.useRef(0);
+  const exitTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const handleMoreOptions = () => {
-    showToast('Coming soon');
-  };
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        const now = Date.now();
+        
+        if (exitTimeoutRef.current) {
+          clearTimeout(exitTimeoutRef.current);
+        }
+        
+        if (exitAttemptsRef.current === 0 || now - (exitAttemptsRef.current * 1000) > 2000) {
+          exitAttemptsRef.current = 1;
+        } else {
+          exitAttemptsRef.current += 1;
+        }
+        
+        if (exitAttemptsRef.current >= 4) {
+          BackHandler.exitApp();
+          return true;
+        }
+        
+        exitTimeoutRef.current = setTimeout(() => {
+          exitAttemptsRef.current = 0;
+        }, 2000);
+        
+        return true;
+      };
 
-  const handleTabPress = (tab: string) => {
-    if (tab === 'Tools') {
-      router.push('/tools');
-    } else if (tab === 'Articles') {
-      router.push('/articles');
-    } else if (tab === 'Favorites') {
-      setActiveTab('Favorites');
-    } else if (tab === 'More') {
-      router.push('/more');
-    }
-  };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+        if (exitTimeoutRef.current) {
+          clearTimeout(exitTimeoutRef.current);
+        }
+      };
+    }, [])
+  );
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -37,21 +55,9 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TopBar
-        leftText="SToolkit"
-        centerText="Favorites"
-        onMorePress={handleMoreOptions}
-      />
-      
       <View style={styles.centerContent}>
         <Text style={styles.comingSoonText}>Favorites coming soon</Text>
       </View>
-
-      <BottomTab
-        tabs={TABS}
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-      />
 
       <Toast message={toastMessage} visible={toastVisible} />
     </SafeAreaView>

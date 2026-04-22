@@ -1,20 +1,16 @@
-import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, Text } from 'react-native';
-import { useRouter } from 'expo-router';
-import { TopBar } from '@/components/TopBar';
-import { BottomTab } from '@/components/BottomTab';
+import React, { useState, useCallback } from 'react';
+import { View, FlatList, StyleSheet, SafeAreaView, Text, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CategoryHeader } from '@/components/CategoryHeader';
 import { ToolItem } from '@/components/ToolItem';
 import { Toast } from '@/components/Toast';
 import { getToolsByCategory } from '@/utils/toolsData';
 
-const TABS = ['Tools', 'Articles', 'Favorites', 'More'];
-
 export default function ToolsScreen() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState('Tools');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const exitAttemptsRef = React.useRef(0);
+  const exitTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const categories = getToolsByCategory();
 
@@ -28,21 +24,44 @@ export default function ToolsScreen() {
     showToast('Coming soon');
   };
 
-  const handleMoreOptions = () => {
-    showToast('Coming soon');
-  };
+  // Handle back button press - exit app on 4th tab screen
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        const now = Date.now();
+        
+        if (exitTimeoutRef.current) {
+          clearTimeout(exitTimeoutRef.current);
+        }
+        
+        if (exitAttemptsRef.current === 0 || now - (exitAttemptsRef.current * 1000) > 2000) {
+          exitAttemptsRef.current = 1;
+        } else {
+          exitAttemptsRef.current += 1;
+        }
+        
+        if (exitAttemptsRef.current >= 4) {
+          BackHandler.exitApp();
+          return true;
+        }
+        
+        exitTimeoutRef.current = setTimeout(() => {
+          exitAttemptsRef.current = 0;
+        }, 2000);
+        
+        return true;
+      };
 
-  const handleTabPress = (tab: string) => {
-    if (tab === 'Tools') {
-      setActiveTab('Tools');
-    } else if (tab === 'Articles') {
-      router.push('/articles');
-    } else if (tab === 'Favorites') {
-      router.push('/favorites');
-    } else if (tab === 'More') {
-      router.push('/more');
-    }
-  };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+        if (exitTimeoutRef.current) {
+          clearTimeout(exitTimeoutRef.current);
+        }
+      };
+    }, [])
+  );
 
   const renderCategory = ({ item }: { item: { name: string; tools: any[] } }) => (
     <View>
@@ -60,12 +79,6 @@ export default function ToolsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TopBar
-        leftText="SToolkit"
-        centerText="Tools"
-        onMorePress={handleMoreOptions}
-      />
-      
       <FlatList
         data={categories}
         renderItem={renderCategory}
@@ -75,16 +88,9 @@ export default function ToolsScreen() {
         accessibilityLabel="Tools list"
       />
 
-      {/* More tools coming soon text */}
       <View style={styles.comingSoonContainer}>
         <Text style={styles.comingSoonText}>More tools coming soon</Text>
       </View>
-
-      <BottomTab
-        tabs={TABS}
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-      />
 
       <Toast message={toastMessage} visible={toastVisible} />
     </SafeAreaView>
