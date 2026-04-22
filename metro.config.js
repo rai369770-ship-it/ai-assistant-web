@@ -15,8 +15,12 @@ config.transformer = {
 };
 
 // Exclude unnecessary files from the bundle
+if (!config.resolver) {
+  config.resolver = {};
+}
+const blockList = config.resolver.blockList || [];
 config.resolver.blockList = [
-  ...config.resolver.blockList,
+  ...Array.isArray(blockList) ? blockList : [],
   /.*\.test\..*/,
   /.*\.spec\..*/,
 ];
