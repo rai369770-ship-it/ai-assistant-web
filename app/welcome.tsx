@@ -8,14 +8,14 @@ import {
   Linking,
   Platform,
   Alert,
+  PermissionsAndroid,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
-import * as PermissionsAndroid from 'react-native';
+import RNFS from 'react-native-fs';
 import * as Camera from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 
-const CONFIG_PATH = `${FileSystem.documentDirectory}settings.json`;
+const CONFIG_PATH = `${RNFS.DocumentDirectoryPath}/settings.json`;
 
 interface Settings {
   isFirstRun?: boolean;
@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
 
   const saveSettings = async (data: Settings) => {
     try {
-      await FileSystem.writeAsStringAsync(CONFIG_PATH, JSON.stringify(data), { encoding: FileSystem.EncodingType.UTF8 });
+      await RNFS.writeFile(CONFIG_PATH, JSON.stringify(data), 'utf8');
     } catch (error) {
       console.error('Error saving settings:', error);
     }
@@ -35,9 +35,9 @@ export default function WelcomeScreen() {
 
   const loadSettings = async (): Promise<Settings | null> => {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(CONFIG_PATH);
-      if (fileInfo.exists) {
-        const content = await FileSystem.readAsStringAsync(CONFIG_PATH, { encoding: FileSystem.EncodingType.UTF8 });
+      const fileExists = await RNFS.exists(CONFIG_PATH);
+      if (fileExists) {
+        const content = await RNFS.readFile(CONFIG_PATH, 'utf8');
         return JSON.parse(content);
       }
       return null;
@@ -65,7 +65,7 @@ export default function WelcomeScreen() {
         ]
       );
     } else {
-      // Android 10 and below - Request storage permissions
+      // Android 10 and below - Request storage permissions using RNFS
       try {
         const readGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
