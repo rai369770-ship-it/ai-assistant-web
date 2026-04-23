@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 android {
@@ -34,7 +33,7 @@ android {
     }
     
     kotlinOptions {
-        jvmTarget '17'
+        jvmTarget = '17'
     }
     
     buildFeatures {
@@ -79,9 +78,6 @@ dependencies {
     
     // Kotlin Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    
-    // Accessibility support
-    implementation 'androidx.compose.ui:ui-semantics'
     
     // Permissions handling
     implementation 'com.google.accompanist:accompanist-permissions:0.33.1-alpha'
