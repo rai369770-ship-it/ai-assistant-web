@@ -10,6 +10,8 @@ env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
   ORG_GRADLE_PROJECT_org.gradle.caching: "true"
   ORG_GRADLE_PROJECT_org.gradle.parallel: "true"
+  ANDROID_HOME: "/usr/local/lib/android/sdk"
+  ANDROID_SDK_ROOT: "/usr/local/lib/android/sdk"
 
 jobs:
   build:
@@ -32,10 +34,24 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Free up disk space
+        run: |
+          echo "=== Freeing up disk space ==="
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf "/usr/local/share/boost" || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools,platforms;android-34,build-tools;34.0.0'
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0 cmd-line-tools;latest'
+          log-accepted-android-sdk-licenses: true
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -75,10 +91,17 @@ jobs:
           ./gradlew clean --no-daemon || true
           rm -rf ~/.gradle/caches/build-cache-* || true
 
+      - name: Verify SDK packages installed
+        run: |
+          echo "=== Installed SDK packages ==="
+          sdkmanager --list_installed || true
+          echo "=== Available disk space ==="
+          df -h
+
       - name: Build Android Unsigned Release APK
         run: |
           echo "Building unsigned release APK..."
-          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          ./gradlew assembleRelease --no-daemon --stacktrace
           echo "Build completed."
 
       - name: Verify APK outputs
