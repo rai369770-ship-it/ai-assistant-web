@@ -1,4 +1,36 @@
 ```
-# CI/CD
-.github/
+# Gradle
+.gradle/
+build/
+
+# Dependencies
+.libs/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+.env
+.env.local
+.env.*
 ```
