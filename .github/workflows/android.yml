@@ -26,31 +26,10 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Set correct JAVA_HOME
-        run: |
-          export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
-          echo "Set JAVA_HOME to $JAVA_HOME"
-
-      - name: Enable KVM group perms (for faster emulator if needed)
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Free up disk space
-        run: |
-          echo "=== Freeing up disk space ==="
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf "/usr/local/share/boost" || true
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
-          df -h
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-34 build-tools;34.0.0 cmd-line-tools;latest'
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: true
 
@@ -71,33 +50,6 @@ jobs:
           else
             echo "Gradle Wrapper jar already exists."
           fi
-
-      - name: Verify project structure
-        run: |
-          echo "=== Project Root ==="
-          ls -la
-          echo "=== App Directory ==="
-          ls -la app/
-          echo "=== Main Source Directory ==="
-          ls -la app/src/main/
-          echo "=== Java/Kotlin Source Directory ==="
-          ls -la app/src/main/java/
-          echo "=== Resources Directory ==="
-          ls -la app/src/main/res/
-          echo "=== Gradle Wrapper ==="
-          ls -la gradle/wrapper/
-
-      - name: Clean previous builds and Gradle cache
-        run: |
-          ./gradlew clean --no-daemon || true
-          rm -rf ~/.gradle/caches/build-cache-* || true
-
-      - name: Verify SDK packages installed
-        run: |
-          echo "=== Installed SDK packages ==="
-          sdkmanager --list_installed || true
-          echo "=== Available disk space ==="
-          df -h
 
       - name: Build Android Unsigned Release APK
         run: |
@@ -153,11 +105,3 @@ jobs:
           path: app/build/outputs/apk/release/**/*.sha256
           if-no-files-found: ignore
           retention-days: 30
-
-      - name: Cleanup Gradle Cache
-        if: always()
-        run: |
-          echo "Cleaning up Gradle cache to save disk space..."
-          rm -rf ~/.gradle/caches
-          rm -rf .gradle
-          echo "Cleanup completed."
