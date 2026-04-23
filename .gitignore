@@ -1,67 +1,78 @@
-```yaml
-# Configuration for GitHub Actions workflow
-!.github/workflows/android.yml
+```
+# Dependencies
+node_modules/
 
-# Gradle and Android build outputs
-.gradle/
+# Build artifacts
+dist/
 build/
-app/build/
-.intermediates/
-.local.properties
+target/
 
-# Android specific
-*.apk
-*.aar
-*.iml
-captures/
-
-# Environment variables
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
 .env
 .env.local
-*.env.*
-
-# IDE files
-.idea/
-*.swp
-*.swo
+.env.*
+.venv/
+venv/
+ENV/
+.env.bak
+.python-version
 
 # Logs
 *.log
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Python (if applicable)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-
-# Node.js (if applicable)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Coverage reports
 coverage/
-*.coverage
 htmlcov/
+.coverage
+
+# Environment specific
+.env.local
+.env.*
 
 # Temporary files
 *.tmp
-*~
+*.temp
+
+# MyPy cache
+.mypy_cache/
+
+# Pytest cache
+.pytest_cache/
+
+# Gradle
+.gradle/
+
+# Compiled files
+*.class
+*.o
+*.obj
+*.out
+*.dll
+*.so
+*.a
 ```
-
-Wait, I need to reconsider this. The only change is a single YAML file in `.github/workflows/android.yml`. This appears to be just a configuration file without any build artifacts, dependencies, or temporary files in the change list.
-
-(empty)
