@@ -1,4 +1,67 @@
+```yaml
+# Configuration for GitHub Actions workflow
+!.github/workflows/android.yml
+
+# Gradle and Android build outputs
+.gradle/
+build/
+app/build/
+.intermediates/
+.local.properties
+
+# Android specific
+*.apk
+*.aar
+*.iml
+captures/
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Python (if applicable)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+*.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*~
 ```
-# CI/CD
-.github/
-```
+
+Wait, I need to reconsider this. The only change is a single YAML file in `.github/workflows/android.yml`. This appears to be just a configuration file without any build artifacts, dependencies, or temporary files in the change list.
+
+(empty)
