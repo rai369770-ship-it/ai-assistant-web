@@ -61,6 +61,12 @@ object ToolsRepository {
         ),
         // Audio Tools
         Tool(
+            id = "speech-to-text",
+            name = "Speech to Text Converter",
+            description = "Convert spoken words into accurate text with multi-language support and real-time transcription.",
+            category = ToolCategory.AUDIO_TOOLS
+        ),
+        Tool(
             id = "text-to-speech",
             name = "Text to Speech Converter",
             description = "Multilingual TTS synthesizer with local and online engine support.",
