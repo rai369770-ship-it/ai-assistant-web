@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -20,13 +21,17 @@ import androidx.navigation.compose.rememberNavController
 import com.blindtechnexus.app.navigation.Screen
 import com.blindtechnexus.app.ui.components.BlindTechNexusBottomNavigation
 import com.blindtechnexus.app.ui.components.BlindTechNexusTopBar
+import com.blindtechnexus.app.ui.screens.AboutScreen
 import com.blindtechnexus.app.ui.screens.ArticlesScreen
+import com.blindtechnexus.app.ui.screens.ContactUsScreen
 import com.blindtechnexus.app.ui.screens.FavoritesScreen
+import com.blindtechnexus.app.ui.screens.FeedbackScreen
 import com.blindtechnexus.app.ui.screens.MoreScreen
 import com.blindtechnexus.app.ui.screens.PermissionScreen
 import com.blindtechnexus.app.ui.screens.Toast
 import com.blindtechnexus.app.ui.screens.ToolsScreen
 import com.blindtechnexus.app.ui.screens.WelcomeScreen
+import com.blindtechnexus.app.ui.screens.openAccessibilitySettingsIntent
 import com.blindtechnexus.app.ui.theme.SToolkitTheme
 
 class MainActivity : ComponentActivity() {
@@ -61,6 +66,7 @@ fun MainAppContent(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val context = LocalContext.current
     var menuToast by remember { mutableStateOf<String?>(null) }
 
     val startDestination = when {
@@ -83,13 +89,21 @@ fun MainAppContent(
             if (showBars) {
                 BlindTechNexusTopBar(
                     centerTitle = when (currentRoute) {
-                        Screen.Tools.route -> "tools"
-                        Screen.Articles.route -> "articles"
-                        Screen.Favorites.route -> "favorites"
-                        Screen.More.route -> "Moore"
+                        Screen.Tools.route -> "Tools"
+                        Screen.Articles.route -> "Articles"
+                        Screen.Favorites.route -> "Favorites"
+                        Screen.More.route -> "More"
                         else -> ""
                     },
-                    onMenuClick = { selected -> menuToast = selected }
+                    onMenuClick = { selected ->
+                        when (selected) {
+                            "Accessibility settings" -> context.startActivity(openAccessibilitySettingsIntent())
+                            "About" -> navController.navigate(Screen.About.route)
+                            "Contact us" -> navController.navigate(Screen.Contact.route)
+                            "Feedback" -> navController.navigate(Screen.Feedback.route)
+                        }
+                        menuToast = selected
+                    }
                 )
             }
         },
@@ -137,12 +151,23 @@ fun MainAppContent(
                 )
             }
 
-            composable(Screen.Tools.route) {
-                ToolsScreen(onToolClick = {})
-            }
+            composable(Screen.Tools.route) { ToolsScreen(onToolClick = {}) }
             composable(Screen.Articles.route) { ArticlesScreen() }
             composable(Screen.Favorites.route) { FavoritesScreen() }
             composable(Screen.More.route) { MoreScreen(onMoreOptionsClick = {}) }
+            composable(Screen.About.route) {
+                AboutScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onContactClick = { navController.navigate(Screen.Contact.route) },
+                    onFeedbackClick = { navController.navigate(Screen.Feedback.route) }
+                )
+            }
+            composable(Screen.Contact.route) {
+                ContactUsScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(Screen.Feedback.route) {
+                FeedbackScreen(onBackClick = { navController.popBackStack() })
+            }
         }
 
         menuToast?.let { message ->
