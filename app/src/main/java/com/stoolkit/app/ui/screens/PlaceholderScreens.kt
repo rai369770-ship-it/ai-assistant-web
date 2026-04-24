@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.stoolkit.app.ui.theme.*
 
 /**
@@ -16,6 +17,7 @@ import com.stoolkit.app.ui.theme.*
  */
 @Composable
 fun ArticlesScreen(
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     var toastMessage by remember { mutableStateOf("") }
@@ -49,6 +51,7 @@ fun ArticlesScreen(
  */
 @Composable
 fun FavoritesScreen(
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     var toastMessage by remember { mutableStateOf("") }
@@ -78,11 +81,15 @@ fun FavoritesScreen(
 }
 
 /**
- * More screen composable - placeholder
+ * More screen composable with popup menu options
  */
 @Composable
 fun MoreScreen(
-    onMoreOptionsClick: () -> Unit,
+    navController: NavController,
+    onAccessibilitySettingsClick: () -> Unit,
+    onAboutUsClick: () -> Unit,
+    onContactUsClick: () -> Unit,
+    onFeedbackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var toastMessage by remember { mutableStateOf("") }
