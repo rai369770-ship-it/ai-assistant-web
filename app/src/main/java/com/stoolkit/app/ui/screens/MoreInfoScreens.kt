@@ -18,11 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -150,7 +147,6 @@ data class FeedbackRequest(
     @SerialName("message") val message: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedbackScreen(
     onBackClick: () -> Unit,
@@ -208,20 +204,17 @@ fun FeedbackScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
         Text("Category")
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
+        Column {
             OutlinedTextField(
                 value = if (category.isBlank()) "Select a category" else category,
                 onValueChange = {},
                 readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
+                modifier = Modifier.fillMaxWidth()
             )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
                 categories.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option) },
@@ -231,6 +224,9 @@ fun FeedbackScreen(
                         }
                     )
                 }
+            }
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(if (expanded) "Hide categories" else "Choose category")
             }
         }
 
