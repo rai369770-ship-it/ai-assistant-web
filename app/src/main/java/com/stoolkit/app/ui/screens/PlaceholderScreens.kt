@@ -1,4 +1,4 @@
-package com.stoolkit.app.ui.screens
+package com.blindtechnexus.app.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -9,7 +9,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.stoolkit.app.ui.theme.*
+import com.blindtechnexus.app.ui.theme.*
 
 /**
  * Articles screen composable - placeholder

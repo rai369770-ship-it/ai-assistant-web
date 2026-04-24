@@ -1,4 +1,4 @@
-package com.stoolkit.app.ui.screens
+package com.blindtechnexus.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -14,8 +14,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.stoolkit.app.data.ToolsRepository
-import com.stoolkit.app.ui.theme.*
+import com.blindtechnexus.app.data.ToolsRepository
+import com.blindtechnexus.app.ui.theme.*
 
 /**
  * Tools screen composable displaying all tools grouped by category
@@ -77,14 +77,14 @@ fun ToolsScreen(
 /**
  * Extension property to get display name for ToolCategory
  */
-val com.stoolkit.app.data.model.ToolCategory.displayName: String
+val com.blindtechnexus.app.data.model.ToolCategory.displayName: String
     get() = when (this) {
-        com.stoolkit.app.data.model.ToolCategory.AI_TOOLS -> "AI Tools"
-        com.stoolkit.app.data.model.ToolCategory.AUDIO_TOOLS -> "Audio Tools"
-        com.stoolkit.app.data.model.ToolCategory.PRODUCTIVITY_TOOLS -> "Productivity Tools"
-        com.stoolkit.app.data.model.ToolCategory.VIDEO_TOOLS -> "Video Tools"
-        com.stoolkit.app.data.model.ToolCategory.IMAGE_TOOLS -> "Image Tools"
-        com.stoolkit.app.data.model.ToolCategory.DEVICE_TOOLS -> "Device Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.AI_TOOLS -> "AI Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.AUDIO_TOOLS -> "Audio Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.PRODUCTIVITY_TOOLS -> "Productivity Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.VIDEO_TOOLS -> "Video Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.IMAGE_TOOLS -> "Image Tools"
+        com.blindtechnexus.app.data.model.ToolCategory.DEVICE_TOOLS -> "Device Tools"
     }
 
 /**

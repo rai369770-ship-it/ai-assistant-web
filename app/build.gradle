@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = 'com.stoolkit.app'
+    namespace = 'com.blindtechnexus.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.stoolkit.app'
+        applicationId 'com.blindtechnexus.app'
         minSdk 26
         targetSdk 34
         versionCode 1

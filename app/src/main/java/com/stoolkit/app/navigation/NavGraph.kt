@@ -1,4 +1,4 @@
-package com.stoolkit.app.navigation
+package com.blindtechnexus.app.navigation
 
 /**
  * Navigation routes for the app
