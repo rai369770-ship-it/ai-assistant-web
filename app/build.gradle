@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -76,8 +77,11 @@ dependencies {
     implementation 'androidx.compose.runtime:runtime'
     implementation 'androidx.compose.runtime:runtime-livedata'
     
-    // Kotlin Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation platform("com.squareup.okhttp3:okhttp-bom:5.3.2")
+    implementation "com.squareup.okhttp3:okhttp"
+    implementation "com.squareup.okhttp3:logging-interceptor"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
     
     // Permissions handling
     implementation 'com.google.accompanist:accompanist-permissions:0.33.1-alpha'

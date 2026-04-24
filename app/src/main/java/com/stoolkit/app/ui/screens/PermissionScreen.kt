@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,8 +36,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.blindtechnexus.app.ui.theme.OnBackground
 import com.blindtechnexus.app.ui.theme.OnPrimary
 import com.blindtechnexus.app.ui.theme.OnSurfaceDisabled
@@ -50,10 +51,16 @@ fun PermissionScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val powerManager = context.getSystemService(PowerManager::class.java)
+
     var hasAllFilesAccess by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
         )
+    }
+    var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var hasBatteryOptimizationIgnored by remember {
+        mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
 
     val runtimePermissions = remember {
@@ -74,11 +81,14 @@ fun PermissionScreen(
 
     val runtimePermissionState = rememberMultiplePermissionsState(runtimePermissions)
 
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(
+    val appSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         hasAllFilesAccess =
             Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+        hasOverlayPermission = Settings.canDrawOverlays(context)
+        hasBatteryOptimizationIgnored =
+            powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
 
         if (hasAllFilesAccess) {
             runtimePermissionState.launchMultiplePermissionRequest()
@@ -87,8 +97,8 @@ fun PermissionScreen(
 
     val allRuntimeGranted = runtimePermissionState.permissions.all { it.status.isGranted }
 
-    LaunchedEffect(hasAllFilesAccess, allRuntimeGranted) {
-        if (hasAllFilesAccess && allRuntimeGranted) {
+    LaunchedEffect(hasAllFilesAccess, allRuntimeGranted, hasOverlayPermission, hasBatteryOptimizationIgnored) {
+        if (hasAllFilesAccess && allRuntimeGranted && hasOverlayPermission && hasBatteryOptimizationIgnored) {
             onPermissionsGranted()
         }
     }
@@ -111,20 +121,11 @@ fun PermissionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "To give you the best accessible experience, Blind Tech Nexus needs a few permissions: files access, storage read/write (where supported), microphone, camera, notifications, and background run support. We request all files first, then remaining permissions.",
+            text = "Blind Tech Nexus needs files access, microphone, camera, media access, display over other apps, and ignore battery optimization for reliable accessibility.",
             style = MaterialTheme.typography.bodyLarge,
             color = OnSurfaceMedium,
             textAlign = TextAlign.Start,
             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.3
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "When all files access is granted, we will continue with audio, camera, and related permissions automatically.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = OnSurfaceDisabled,
-            textAlign = TextAlign.Start
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -132,11 +133,12 @@ fun PermissionScreen(
         Button(
             onClick = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !hasAllFilesAccess) {
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                        Uri.parse("package:${context.packageName}")
+                    appSettingsLauncher.launch(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
                     )
-                    allFilesAccessLauncher.launch(intent)
                 } else {
                     runtimePermissionState.launchMultiplePermissionRequest()
                 }
@@ -154,23 +156,45 @@ fun PermissionScreen(
 
         Button(
             onClick = {
-                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                context.startActivity(intent)
+                val overlayIntent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+                appSettingsLauncher.launch(overlayIntent)
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Primary.copy(alpha = 0.85f))
         ) {
-            Text(text = "Allow app to run in background", color = OnPrimary)
+            Text(text = "Allow display over other apps", color = OnPrimary)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                val batteryIntent = Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${context.packageName}")
+                )
+                runCatching { appSettingsLauncher.launch(batteryIntent) }.onFailure {
+                    appSettingsLauncher.launch(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Primary.copy(alpha = 0.85f))
+        ) {
+            Text(text = "Ignore battery optimization", color = OnPrimary)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         val statusText = when {
-            hasAllFilesAccess && allRuntimeGranted -> "All required permissions granted"
-            hasAllFilesAccess -> "All files access granted. Waiting for remaining permissions"
-            else -> "Waiting for all files access"
+            hasAllFilesAccess && allRuntimeGranted && hasOverlayPermission && hasBatteryOptimizationIgnored -> "All required permissions granted"
+            else -> "Grant all permissions to continue"
         }
         Text(
             text = statusText,

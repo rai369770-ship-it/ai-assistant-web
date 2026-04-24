@@ -10,6 +10,9 @@ sealed class Screen(val route: String) {
     object Articles : Screen("articles")
     object Favorites : Screen("favorites")
     object More : Screen("more")
+    object About : Screen("about")
+    object Contact : Screen("contact")
+    object Feedback : Screen("feedback")
 }
 
 /**
@@ -23,7 +26,7 @@ sealed class BottomNavItem(
     object Articles : BottomNavItem("articles", "Articles")
     object Favorites : BottomNavItem("favorites", "Favorites")
     object More : BottomNavItem("more", "More")
-    
+
     companion object {
         val items = listOf(Tools, Articles, Favorites, More)
     }
