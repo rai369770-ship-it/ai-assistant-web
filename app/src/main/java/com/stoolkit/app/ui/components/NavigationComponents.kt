@@ -64,15 +64,21 @@ fun SToolkitBottomNavigation(
 }
 
 /**
- * Top app bar composable
+ * Top app bar composable with more options popup menu
  */
 @Composable
 fun SToolkitTopAppBar(
     title: String = "SToolkit",
     subtitle: String = "",
     onMoreClick: () -> Unit,
+    onAccessibilitySettingsClick: () -> Unit = {},
+    onAboutUsClick: () -> Unit = {},
+    onContactUsClick: () -> Unit = {},
+    onFeedbackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showPopupMenu by remember { mutableStateOf(false) }
+    
     Surface(
         color = SurfaceTransparent,
         shadowElevation = 1.dp,
@@ -111,13 +117,13 @@ fun SToolkitTopAppBar(
                 )
             }
             
-            // Right side - More button
+            // Right side - More button with popup menu
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 IconButton(
-                    onClick = onMoreClick,
+                    onClick = { showPopupMenu = true },
                     modifier = Modifier
                         .size(40.dp)
                         .semantics { contentDescription = "More options. Opens more options menu" }
@@ -128,7 +134,76 @@ fun SToolkitTopAppBar(
                         color = OnBackground
                     )
                 }
+                
+                // Popup menu
+                if (showPopupMenu) {
+                    PopupMenu(
+                        onDismiss = { showPopupMenu = false },
+                        onAccessibilitySettingsClick = {
+                            showPopupMenu = false
+                            onAccessibilitySettingsClick()
+                        },
+                        onAboutUsClick = {
+                            showPopupMenu = false
+                            onAboutUsClick()
+                        },
+                        onContactUsClick = {
+                            showPopupMenu = false
+                            onContactUsClick()
+                        },
+                        onFeedbackClick = {
+                            showPopupMenu = false
+                            onFeedbackClick()
+                        }
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * Popup menu for more options
+ */
+@Composable
+fun PopupMenu(
+    onDismiss: () -> Unit,
+    onAccessibilitySettingsClick: () -> Unit,
+    onAboutUsClick: () -> Unit,
+    onContactUsClick: () -> Unit,
+    onFeedbackClick: () -> Unit
+) {
+    DropdownMenu(
+        expanded = true,
+        onDismissRequest = onDismiss
+    ) {
+        DropdownMenuItem(
+            text = { Text("Accessibility Settings") },
+            onClick = onAccessibilitySettingsClick,
+            leadingIcon = {
+                Text("♿", style = MaterialTheme.typography.bodyLarge)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("About Us") },
+            onClick = onAboutUsClick,
+            leadingIcon = {
+                Text("ℹ️", style = MaterialTheme.typography.bodyLarge)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("Contact Us") },
+            onClick = onContactUsClick,
+            leadingIcon = {
+                Text("📞", style = MaterialTheme.typography.bodyLarge)
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("Feedback") },
+            onClick = onFeedbackClick,
+            leadingIcon = {
+                Text("💬", style = MaterialTheme.typography.bodyLarge)
+            }
+        )
     }
 }

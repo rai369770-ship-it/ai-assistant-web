@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -62,7 +63,8 @@ fun PermissionScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .semantics { contentDescription = "Permission screen" },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -173,7 +175,7 @@ fun PermissionScreen(
                 }
             },
             containerColor = Surface,
-                    titleContentColor = OnSurface,
+            titleContentColor = OnSurface,
             textContentColor = OnSurfaceMedium
         )
     }
