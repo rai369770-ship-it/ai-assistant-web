@@ -104,6 +104,12 @@ object ToolsRepository {
             description = "Record your screen with customizable settings and options.",
             category = ToolCategory.VIDEO_TOOLS
         ),
+        Tool(
+            id = "slideshow-creator",
+            name = "Slideshow Creator",
+            description = "Create beautiful slideshows from your photos with music, transitions, and effects.",
+            category = ToolCategory.VIDEO_TOOLS
+        ),
         // Image Tools
         Tool(
             id = "camera",
