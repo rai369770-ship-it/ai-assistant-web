@@ -84,7 +84,7 @@ fun PermissionScreen(
         }
     }
 
-    val allRuntimeGranted = runtimePermissionState.permissions.all { it.status.isGranted }
+    val allRuntimeGranted = runtimePermissionState.permissions.all { it.hasRequiredPermission }
 
     LaunchedEffect(hasAllFilesAccess, allRuntimeGranted) {
         if (hasAllFilesAccess && allRuntimeGranted) {
