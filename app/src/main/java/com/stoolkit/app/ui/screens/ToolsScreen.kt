@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.stoolkit.app.data.ToolsRepository
 import com.stoolkit.app.data.model.CategoryGroup
 import com.stoolkit.app.ui.theme.*
@@ -22,6 +23,7 @@ import com.stoolkit.app.ui.theme.*
  */
 @Composable
 fun ToolsScreen(
+    navController: NavController,
     onToolClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -29,10 +31,32 @@ fun ToolsScreen(
     var toastMessage by remember { mutableStateOf("") }
     var showToast by remember { mutableStateOf(false) }
     
-    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+        // Top bar with more options
+        SToolkitTopAppBar(
+            title = "SToolkit",
+            subtitle = "Tools",
+            onMoreClick = {},
+            onAccessibilitySettingsClick = {
+                // Handled by parent
+            },
+            onAboutUsClick = {
+                navController.navigate("about_us")
+            },
+            onContactUsClick = {
+                navController.navigate("contact_us")
+            },
+            onFeedbackClick = {
+                navController.navigate("feedback")
+            }
+        )
+        
+        // Scrollable tools list
         LazyColumn(
             contentPadding = PaddingValues(bottom = 16.dp),
-            modifier = Modifier.semantics { contentDescription = "Tools list" }
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { contentDescription = "Tools list" }
         ) {
             items(categories, key = { it.name }) { category ->
                 CategoryHeader(categoryName = category.name.displayName)
@@ -48,21 +72,6 @@ fun ToolsScreen(
                     )
                 }
             }
-        }
-        
-        // Coming soon text at bottom
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "More tools coming soon",
-                style = MaterialTheme.typography.bodySmall,
-                color = OnSurfaceDisabled,
-                textAlign = TextAlign.Center,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            )
         }
         
         // Toast notification

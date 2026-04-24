@@ -1,78 +1,43 @@
 ```
-# Dependencies
-node_modules/
+# Android build artifacts
+*.apk
+*.aar
+*.dex
+*.so
 
-# Build artifacts
-dist/
+# Gradle
+.gradle/
 build/
-target/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.ENV
-.env
-.env.local
-.env.*
-.venv/
-venv/
-ENV/
-.env.bak
-.python-version
+# Local configuration file (sdk path, etc)
+local.properties
 
-# Logs
+# Log Files
 *.log
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Android Studio Navigation editor temp files
+.navigation/
 
-# Editor files
-.vscode/
+# External native build folder generated in Android Studio 2.2 and later
+.externalNativeBuild
+
+# User-specific configurations
 .idea/
-*.swp
-*.swo
-*~
+*.iml
+*.iws
+
+# Generated code
+gen/
+
+# Debug and release folders
+debug/
+release/
 
 # Coverage reports
 coverage/
-htmlcov/
-.coverage
-
-# Environment specific
-.env.local
-.env.*
+*.ec
 
 # Temporary files
 *.tmp
 *.temp
-
-# MyPy cache
-.mypy_cache/
-
-# Pytest cache
-.pytest_cache/
-
-# Gradle
-.gradle/
-
-# Compiled files
-*.class
-*.o
-*.obj
-*.out
-*.dll
-*.so
-*.a
 ```
