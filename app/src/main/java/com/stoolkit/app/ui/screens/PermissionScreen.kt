@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.PermissionState
 import com.blindtechnexus.app.ui.theme.OnBackground
 import com.blindtechnexus.app.ui.theme.OnPrimary
 import com.blindtechnexus.app.ui.theme.OnSurfaceDisabled
@@ -84,7 +85,7 @@ fun PermissionScreen(
         }
     }
 
-    val allRuntimeGranted = runtimePermissionState.permissions.all { it.hasRequiredPermission }
+    val allRuntimeGranted = runtimePermissionState.permissions.all { it.status.isGranted }
 
     LaunchedEffect(hasAllFilesAccess, allRuntimeGranted) {
         if (hasAllFilesAccess && allRuntimeGranted) {
