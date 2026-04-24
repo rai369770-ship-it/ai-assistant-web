@@ -97,4 +97,7 @@
     <string name="accessibility_selected">, selected</string>
     <string name="accessibility_developer_link">Opens Blind Tech Nexus website</string>
     <string name="accessibility_continue_button">Continue to app</string>
+    
+    <!-- Accessibility Service -->
+    <string name="accessibility_service_description">BlindTech Nexus Accessibility Service - This service helps the app be listed in accessibility settings for enhanced accessibility features.</string>
 </resources>

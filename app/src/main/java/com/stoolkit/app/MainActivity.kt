@@ -196,6 +196,7 @@ fun MainAppContent(
  */
 fun openAccessibilitySettings(context: android.content.Context) {
     try {
+        // First, try to open the specific accessibility service for this app
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
