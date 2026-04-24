@@ -1,8 +1,8 @@
-package com.stoolkit.app.data
+package com.blindtechnexus.app.data
 
-import com.stoolkit.app.data.model.CategoryGroup
-import com.stoolkit.app.data.model.Tool
-import com.stoolkit.app.data.model.ToolCategory
+import com.blindtechnexus.app.data.model.CategoryGroup
+import com.blindtechnexus.app.data.model.Tool
+import com.blindtechnexus.app.data.model.ToolCategory
 
 /**
  * Repository providing tool data for the app
@@ -13,7 +13,7 @@ object ToolsRepository {
         // AI Tools
         Tool(
             id = "stoolkit-ai",
-            name = "SToolkit AI",
+            name = "Blind Tech Nexus AI",
             description = "Multi-model native AI for writing, coding, and planning anything.",
             category = ToolCategory.AI_TOOLS
         ),

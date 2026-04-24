@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SToolkit</string>
+    <string name="app_name">blind tech nexus</string>
     
     <!-- Welcome Screen -->
-    <string name="welcome_title">Welcome to SToolkit</string>
+    <string name="welcome_title">Welcome to blind tech nexus</string>
     <string name="welcome_description">Welcome to Stoolkit, your all-in-one multi-toolkit for Android. This app brings together powerful AI tools, productivity features, and utilities for documents, images, audio, and video—all in one place. Designed to simplify your daily tasks, Stoolkit helps you create, manage, and explore with ease. Discover useful articles, smart features, and practical resources that support your work and learning. Simple, fast, and efficient, Stoolkit gives you everything you need to do more in a single app.</string>
     <string name="developed_by">Developed by:</string>
     <string name="developer_link">Blind Tech Nexus</string>
@@ -14,7 +14,7 @@
     
     <!-- Permission Screen -->
     <string name="permission_title">Grant Access</string>
-    <string name="permission_description">SToolkit needs access to your files, camera, and microphone for full functionality. Please grant the necessary permissions in the settings.</string>
+    <string name="permission_description">Blind Tech Nexus needs access to your files, camera, and microphone for full functionality. Please grant the necessary permissions in the settings.</string>
     <string name="grant_access">Grant Access</string>
     <string name="permission_granted">Permission Granted</string>
     <string name="permission_denied">Permission Denied</string>
@@ -36,7 +36,7 @@
     <string name="category_device_tools">Device Tools</string>
     
     <!-- Tool Names -->
-    <string name="tool_stoolkit_ai">SToolkit AI</string>
+    <string name="tool_stoolkit_ai">Blind Tech Nexus AI</string>
     <string name="tool_auto_tts">Auto TTS</string>
     <string name="tool_audio_video_transcriber">Audio &amp; Video Transcriber</string>
     <string name="tool_youtube_toolkit">YouTube Toolkit</string>

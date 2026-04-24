@@ -1,4 +1,4 @@
-package com.stoolkit.app.data.model
+package com.blindtechnexus.app.data.model
 
 /**
  * Represents a tool category in the app

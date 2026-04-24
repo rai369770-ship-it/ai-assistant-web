@@ -1,4 +1,4 @@
-package com.stoolkit.app.ui.theme
+package com.blindtechnexus.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

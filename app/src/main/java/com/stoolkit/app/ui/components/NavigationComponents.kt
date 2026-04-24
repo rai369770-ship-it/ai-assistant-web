@@ -1,21 +1,40 @@
-package com.stoolkit.app.ui.components
+package com.blindtechnexus.app.ui.components
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.stoolkit.app.navigation.BottomNavItem
-import com.stoolkit.app.ui.theme.*
+import com.blindtechnexus.app.navigation.BottomNavItem
+import com.blindtechnexus.app.ui.theme.OnBackground
+import com.blindtechnexus.app.ui.theme.OnSurface
+import com.blindtechnexus.app.ui.theme.OnSurfaceDisabled
+import com.blindtechnexus.app.ui.theme.OnSurfaceMedium
+import com.blindtechnexus.app.ui.theme.Primary
+import com.blindtechnexus.app.ui.theme.SurfaceTransparent
+import com.blindtechnexus.app.ui.theme.Transparent
 
-/**
- * Bottom navigation bar composable using Material3 NavigationBar
- */
 @Composable
-fun SToolkitBottomNavigation(
+fun BlindTechNexusBottomNavigation(
     currentRoute: String,
     onNavigateToTab: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -24,14 +43,12 @@ fun SToolkitBottomNavigation(
         containerColor = SurfaceTransparent,
         contentColor = OnSurface,
         tonalElevation = 0.dp,
-        modifier = modifier.semantics { contentDescription = "Bottom navigation" }
+        modifier = modifier
     ) {
         BottomNavItem.items.forEach { item ->
             val selected = currentRoute == item.route
-            
             NavigationBarItem(
                 icon = {
-                    // Simple text-based icons matching the original design
                     Text(
                         text = when (item) {
                             is BottomNavItem.Tools -> "🛠️"
@@ -43,10 +60,7 @@ fun SToolkitBottomNavigation(
                     )
                 },
                 label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Text(text = item.title, style = MaterialTheme.typography.labelMedium)
                 },
                 selected = selected,
                 onClick = { onNavigateToTab(item.route) },
@@ -63,21 +77,15 @@ fun SToolkitBottomNavigation(
     }
 }
 
-/**
- * Top app bar composable
- */
 @Composable
-fun SToolkitTopAppBar(
-    title: String = "SToolkit",
-    subtitle: String = "",
-    onMoreClick: () -> Unit,
+fun BlindTechNexusTopBar(
+    centerTitle: String,
+    onMenuClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = SurfaceTransparent,
-        shadowElevation = 1.dp,
-        modifier = modifier.fillMaxWidth()
-    ) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 1.dp, color = SurfaceTransparent) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,48 +93,38 @@ fun SToolkitTopAppBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left side - App name
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterStart
-            ) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 Text(
-                    text = title,
+                    text = "Blind Tech Nexus",
                     style = MaterialTheme.typography.titleMedium,
-                    color = OnBackground,
-                    modifier = Modifier.semantics { contentDescription = "App name: $title" }
+                    color = OnBackground
                 )
             }
-            
-            // Center - Subtitle/Screen title
-            Box(
-                modifier = Modifier.weight(2f),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = OnSurfaceMedium,
-                    maxLines = 1
+                    text = centerTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = OnSurfaceMedium
                 )
             }
-            
-            // Right side - More button
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterEnd
-            ) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                 IconButton(
-                    onClick = onMoreClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = "More options. Opens more options menu" }
+                    onClick = { expanded = true },
+                    modifier = Modifier.semantics { contentDescription = "More options" }
                 ) {
-                    Text(
-                        text = "⋮",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = OnBackground
-                    )
+                    Text("⋮", style = MaterialTheme.typography.titleLarge, color = OnBackground)
+                }
+
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    listOf("Accessibility settings", "About", "Contact us", "Feedback").forEach { item ->
+                        DropdownMenuItem(
+                            text = { Text(item) },
+                            onClick = {
+                                expanded = false
+                                onMenuClick(item)
+                            }
+                        )
+                    }
                 }
             }
         }

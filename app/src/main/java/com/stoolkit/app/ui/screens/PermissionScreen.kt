@@ -1,14 +1,32 @@
-package com.stoolkit.app.ui.screens
+package com.blindtechnexus.app.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -16,48 +34,64 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.stoolkit.app.ui.theme.*
-import android.content.Intent
-import android.provider.Settings
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.blindtechnexus.app.ui.theme.OnBackground
+import com.blindtechnexus.app.ui.theme.OnPrimary
+import com.blindtechnexus.app.ui.theme.OnSurfaceDisabled
+import com.blindtechnexus.app.ui.theme.OnSurfaceMedium
+import com.blindtechnexus.app.ui.theme.Primary
 
-/**
- * Permission screen composable for handling all files access and other permissions
- */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionScreen(
     onPermissionsGranted: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(false) }
-    var hasAllFilesAccess by remember { 
+    var hasAllFilesAccess by remember {
         mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Environment.isExternalStorageManager()
-            } else {
-                true
-            }
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
         )
     }
-    
-    // Launcher for all files access permission
+
+    val runtimePermissions = remember {
+        buildList {
+            add(Manifest.permission.RECORD_AUDIO)
+            add(Manifest.permission.CAMERA)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.READ_MEDIA_AUDIO)
+                add(Manifest.permission.READ_MEDIA_IMAGES)
+                add(Manifest.permission.READ_MEDIA_VIDEO)
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+    }
+
+    val runtimePermissionState = rememberMultiplePermissionsState(runtimePermissions)
+
     val allFilesAccessLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            hasAllFilesAccess = Environment.isExternalStorageManager()
-        }
+    ) {
+        hasAllFilesAccess =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
         if (hasAllFilesAccess) {
+            runtimePermissionState.launchMultiplePermissionRequest()
+        }
+    }
+
+    val allRuntimeGranted = runtimePermissionState.permissions.all { it.status.isGranted }
+
+    LaunchedEffect(hasAllFilesAccess, allRuntimeGranted) {
+        if (hasAllFilesAccess && allRuntimeGranted) {
             onPermissionsGranted()
         }
     }
-    
-    LaunchedEffect(hasAllFilesAccess) {
-        if (hasAllFilesAccess) {
-            onPermissionsGranted()
-        }
-    }
-    
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -66,115 +100,82 @@ fun PermissionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Title
         Text(
-            text = "Grant Access",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "Permissions",
+            style = MaterialTheme.typography.headlineMedium,
             color = OnBackground,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.semantics { contentDescription = "Grant Access" }
+            textAlign = TextAlign.Center
         )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Permission description
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
-            text = "SToolkit needs access to your files, camera, and microphone for full functionality. Please grant the necessary permissions in the settings.",
+            text = "To give you the best accessible experience, Blind Tech Nexus needs a few permissions: files access, storage read/write (where supported), microphone, camera, notifications, and background run support. We request all files first, then remaining permissions.",
             style = MaterialTheme.typography.bodyLarge,
             color = OnSurfaceMedium,
-            textAlign = TextAlign.Center,
-            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5,
-            modifier = Modifier.semantics { contentDescription = "Permission description text" }
+            textAlign = TextAlign.Start,
+            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.3
         )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Grant Access button
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "When all files access is granted, we will continue with audio, camera, and related permissions automatically.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OnSurfaceDisabled,
+            textAlign = TextAlign.Start
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Button(
             onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Android 11+ - Show dialog for all files access
-                    showDialog = true
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !hasAllFilesAccess) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                    allFilesAccessLauncher.launch(intent)
                 } else {
-                    // Android 10 and below - Request storage permissions
-                    // For older versions, we just proceed as permissions are granted at runtime
-                    onPermissionsGranted()
+                    runtimePermissionState.launchMultiplePermissionRequest()
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .semantics { contentDescription = "Grant Access button" },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Primary
-            ),
-            shape = MaterialTheme.shapes.medium
+                .semantics { contentDescription = "Grant permissions" },
+            colors = ButtonDefaults.buttonColors(containerColor = Primary)
         ) {
-            Text(
-                text = "Grant Access",
-                style = MaterialTheme.typography.titleMedium,
-                color = OnPrimary
-            )
+            Text(text = "Grant permissions", color = OnPrimary)
         }
-        
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Primary.copy(alpha = 0.85f))
+        ) {
+            Text(text = "Allow app to run in background", color = OnPrimary)
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
-        
-        // Status text
-        if (hasAllFilesAccess) {
-            Text(
-                text = "Permission Granted",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Primary,
-                textAlign = TextAlign.Center
-            )
+
+        val statusText = when {
+            hasAllFilesAccess && allRuntimeGranted -> "All required permissions granted"
+            hasAllFilesAccess -> "All files access granted. Waiting for remaining permissions"
+            else -> "Waiting for all files access"
         }
-    }
-    
-    // Dialog for Android 11+ all files access
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = {
-                Text(
-                    text = "All files access required",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = OnBackground
-                )
-            },
-            text = {
-                Text(
-                    text = "All files permissions is required for files operations. Allow by granting in the setting.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OnSurfaceMedium
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDialog = false
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        allFilesAccessLauncher.launch(intent)
-                    }
-                ) {
-                    Text(
-                        text = "Grant Access",
-                        color = Primary
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDialog = false }
-                ) {
-                    Text(
-                        text = "Cancel",
-                        color = OnSurfaceDisabled
-                    )
-                }
-            },
-            containerColor = Surface,
-                    titleContentColor = OnSurface,
-            textContentColor = OnSurfaceMedium
+        Text(
+            text = statusText,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OnSurfaceDisabled,
+            textAlign = TextAlign.Center
         )
     }
 }
