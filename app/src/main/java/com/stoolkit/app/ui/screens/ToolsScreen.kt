@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,16 +52,18 @@ fun ToolsScreen(
             }
         )
         
-        // Scrollable tools list
+        // Scrollable tools list - using nested scrolling properly for screen readers
         LazyColumn(
             contentPadding = PaddingValues(bottom = 16.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { contentDescription = "Tools list" }
+                .semantics { 
+                    contentDescription = "Tools list. Scroll vertically to see all tools." 
+                }
         ) {
             items(categories, key = { it.name }) { category ->
                 CategoryHeader(categoryName = category.name.displayName)
-                items(category.tools) { tool ->
+                items(category.tools, key = { it.name }) { tool ->
                     ToolItem(
                         name = tool.name,
                         description = tool.description,
@@ -106,7 +109,10 @@ fun CategoryHeader(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp)
-            .semantics { contentDescription = "Category: $categoryName" }
+            .semantics { 
+                heading()
+                contentDescription = "Category: $categoryName" 
+            }
     ) {
         Text(
             text = categoryName,
@@ -114,7 +120,10 @@ fun CategoryHeader(
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             ),
             color = Primary,
-            modifier = Modifier.semantics { contentDescription = "Category: $categoryName" }
+            modifier = Modifier.semantics { 
+                heading()
+                contentDescription = "Category: $categoryName" 
+            }
         )
     }
 }
@@ -135,7 +144,7 @@ fun ToolItem(
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick)
             .semantics { 
-                contentDescription = "$name: $description. Opens tool details"
+                contentDescription = "$name: $description. Double tap to open tool details"
             },
         colors = CardDefaults.cardColors(
             containerColor = SurfaceTransparent

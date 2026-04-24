@@ -19,7 +19,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stoolkit.app.ui.theme.*
 import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 
 /**
  * Permission screen composable for handling all files access and other permissions
@@ -31,10 +34,30 @@ fun PermissionScreen(
 ) {
     val context = LocalContext.current
     var showDialog by remember { mutableStateOf(false) }
+    var showOverlayDialog by remember { mutableStateOf(false) }
+    var showBatteryDialog by remember { mutableStateOf(false) }
+    
     var hasAllFilesAccess by remember { 
         mutableStateOf(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Environment.isExternalStorageManager()
+            } else {
+                true
+            }
+        )
+    }
+    
+    var hasOverlayPermission by remember {
+        mutableStateOf(
+            Settings.canDrawOverlays(context)
+        )
+    }
+    
+    var hasBatteryOptimizationIgnored by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+                powerManager.isIgnoringBatteryOptimizations(context.packageName)
             } else {
                 true
             }
@@ -48,15 +71,50 @@ fun PermissionScreen(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             hasAllFilesAccess = Environment.isExternalStorageManager()
         }
-        if (hasAllFilesAccess) {
-            onPermissionsGranted()
-        }
+        checkAllPermissions(
+            hasAllFilesAccess = hasAllFilesAccess,
+            hasOverlayPermission = hasOverlayPermission,
+            hasBatteryOptimizationIgnored = hasBatteryOptimizationIgnored,
+            onPermissionsGranted = onPermissionsGranted
+        )
     }
     
-    LaunchedEffect(hasAllFilesAccess) {
-        if (hasAllFilesAccess) {
-            onPermissionsGranted()
+    // Launcher for overlay permission
+    val overlayLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        hasOverlayPermission = Settings.canDrawOverlays(context)
+        checkAllPermissions(
+            hasAllFilesAccess = hasAllFilesAccess,
+            hasOverlayPermission = hasOverlayPermission,
+            hasBatteryOptimizationIgnored = hasBatteryOptimizationIgnored,
+            onPermissionsGranted = onPermissionsGranted
+        )
+    }
+    
+    // Launcher for battery optimization
+    val batteryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+            hasBatteryOptimizationIgnored = powerManager.isIgnoringBatteryOptimizations(context.packageName)
         }
+        checkAllPermissions(
+            hasAllFilesAccess = hasAllFilesAccess,
+            hasOverlayPermission = hasOverlayPermission,
+            hasBatteryOptimizationIgnored = hasBatteryOptimizationIgnored,
+            onPermissionsGranted = onPermissionsGranted
+        )
+    }
+    
+    LaunchedEffect(hasAllFilesAccess, hasOverlayPermission, hasBatteryOptimizationIgnored) {
+        checkAllPermissions(
+            hasAllFilesAccess = hasAllFilesAccess,
+            hasOverlayPermission = hasOverlayPermission,
+            hasBatteryOptimizationIgnored = hasBatteryOptimizationIgnored,
+            onPermissionsGranted = onPermissionsGranted
+        )
     }
     
     Column(
@@ -81,7 +139,7 @@ fun PermissionScreen(
         
         // Permission description
         Text(
-            text = "SToolkit needs access to your files, camera, and microphone for full functionality. Please grant the necessary permissions in the settings.",
+            text = "SToolkit needs access to your files, camera, microphone, display over other apps, and battery optimization for full functionality. Please grant the necessary permissions in the settings.",
             style = MaterialTheme.typography.bodyLarge,
             color = OnSurfaceMedium,
             textAlign = TextAlign.Center,
@@ -94,12 +152,14 @@ fun PermissionScreen(
         // Grant Access button
         Button(
             onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Android 11+ - Show dialog for all files access
+                // Show dialogs sequentially or together
+                if (!hasAllFilesAccess && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     showDialog = true
+                } else if (!hasOverlayPermission) {
+                    showOverlayDialog = true
+                } else if (!hasBatteryOptimizationIgnored && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    showBatteryDialog = true
                 } else {
-                    // Android 10 and below - Request storage permissions
-                    // For older versions, we just proceed as permissions are granted at runtime
                     onPermissionsGranted()
                 }
             },
@@ -122,9 +182,9 @@ fun PermissionScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Status text
-        if (hasAllFilesAccess) {
+        if (hasAllFilesAccess && hasOverlayPermission && hasBatteryOptimizationIgnored) {
             Text(
-                text = "Permission Granted",
+                text = "All Permissions Granted",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Primary,
                 textAlign = TextAlign.Center
@@ -166,7 +226,17 @@ fun PermissionScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showDialog = false }
+                    onClick = { 
+                        showDialog = false
+                        // Check if we should proceed to next permission
+                        if (hasOverlayPermission && hasBatteryOptimizationIgnored) {
+                            onPermissionsGranted()
+                        } else if (!hasOverlayPermission) {
+                            showOverlayDialog = true
+                        } else if (!hasBatteryOptimizationIgnored) {
+                            showBatteryDialog = true
+                        }
+                    }
                 ) {
                     Text(
                         text = "Cancel",
@@ -178,5 +248,140 @@ fun PermissionScreen(
             titleContentColor = OnSurface,
             textContentColor = OnSurfaceMedium
         )
+    }
+    
+    // Dialog for display over other apps permission
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverlayDialog = false },
+            title = {
+                Text(
+                    text = "Display over other apps required",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = OnBackground
+                )
+            },
+            text = {
+                Text(
+                    text = "Display over other apps permission is required for showing overlays and floating windows. Allow by granting in the settings.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showOverlayDialog = false
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                            overlayLauncher.launch(intent)
+                        } catch (e: Exception) {
+                            Log.e("PermissionScreen", "Error opening overlay settings", e)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Grant Permission",
+                        color = Primary
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showOverlayDialog = false
+                        // Check if we should proceed to next permission
+                        if (hasBatteryOptimizationIgnored) {
+                            onPermissionsGranted()
+                        } else {
+                            showBatteryDialog = true
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = OnSurfaceDisabled
+                    )
+                }
+            },
+            containerColor = Surface,
+            titleContentColor = OnSurface,
+            textContentColor = OnSurfaceMedium
+        )
+    }
+    
+    // Dialog for battery optimization ignore permission
+    if (showBatteryDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryDialog = false },
+            title = {
+                Text(
+                    text = "Battery optimization exemption required",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = OnBackground
+                )
+            },
+            text = {
+                Text(
+                    text = "Battery optimization exemption is required for background operations. Allow by granting in the settings.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryDialog = false
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                            batteryLauncher.launch(intent)
+                        } catch (e: Exception) {
+                            Log.e("PermissionScreen", "Error opening battery settings", e)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Grant Permission",
+                        color = Primary
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showBatteryDialog = false
+                        onPermissionsGranted()
+                    }
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = OnSurfaceDisabled
+                    )
+                }
+            },
+            containerColor = Surface,
+            titleContentColor = OnSurface,
+            textContentColor = OnSurfaceMedium
+        )
+    }
+}
+
+/**
+ * Check if all permissions are granted
+ */
+private fun checkAllPermissions(
+    hasAllFilesAccess: Boolean,
+    hasOverlayPermission: Boolean,
+    hasBatteryOptimizationIgnored: Boolean,
+    onPermissionsGranted: () -> Unit
+) {
+    if (hasAllFilesAccess && hasOverlayPermission && hasBatteryOptimizationIgnored) {
+        onPermissionsGranted()
     }
 }
