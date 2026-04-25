@@ -19,6 +19,7 @@
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -69,6 +70,12 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/blindtech_accessibility_service" />
         </service>
+
+
+        <service
+            android:name=".features.screenrecorder.ScreenRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|microphone" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

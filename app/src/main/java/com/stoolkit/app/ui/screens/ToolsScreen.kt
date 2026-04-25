@@ -78,7 +78,7 @@ fun ToolsScreen(
                         onClick = {
                             toastMessage = "Coming soon"
                             showToast = true
-                            onToolClick(tool.name)
+                            onToolClick(tool.id)
                         },
                         onLongClick = {
                             selectedPinnedToolToUnpin = tool
@@ -101,7 +101,7 @@ fun ToolsScreen(
                             onClick = {
                                 toastMessage = "Coming soon"
                                 showToast = true
-                                onToolClick(tool.name)
+                                onToolClick(tool.id)
                             },
                             onLongClick = {
                                 selectedToolForActions = tool

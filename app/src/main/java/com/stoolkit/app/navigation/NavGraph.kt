@@ -13,6 +13,7 @@ sealed class Screen(val route: String) {
     object About : Screen("about")
     object Contact : Screen("contact")
     object Feedback : Screen("feedback")
+    object ScreenRecorder : Screen("screen_recorder")
 }
 
 /**

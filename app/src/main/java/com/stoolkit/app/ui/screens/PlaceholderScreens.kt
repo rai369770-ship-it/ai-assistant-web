@@ -98,7 +98,7 @@ fun FavoritesScreen(
                         onClick = {
                             toastMessage = "Coming soon"
                             showToast = true
-                            onToolClick(tool.name)
+                            onToolClick(tool.id)
                         },
                         onLongClick = { toolToRemove = tool }
                     )

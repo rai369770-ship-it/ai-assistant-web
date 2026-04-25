@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.blindtechnexus.app.navigation.Screen
 import com.blindtechnexus.app.ui.components.BlindTechNexusBottomNavigation
 import com.blindtechnexus.app.ui.components.BlindTechNexusTopBar
+import com.blindtechnexus.app.features.screenrecorder.ScreenRecorderScreen
 import com.blindtechnexus.app.ui.screens.AboutScreen
 import com.blindtechnexus.app.ui.screens.ArticlesScreen
 import com.blindtechnexus.app.ui.screens.ContactUsScreen
@@ -151,9 +152,23 @@ fun MainAppContent(
                 )
             }
 
-            composable(Screen.Tools.route) { ToolsScreen(onToolClick = {}) }
+            composable(Screen.Tools.route) {
+                ToolsScreen(
+                    onToolClick = { toolId ->
+                        if (toolId == "screen-recorder") {
+                            navController.navigate(Screen.ScreenRecorder.route)
+                        }
+                    }
+                )
+            }
             composable(Screen.Articles.route) { ArticlesScreen() }
-            composable(Screen.Favorites.route) { FavoritesScreen(onToolClick = {}) }
+            composable(Screen.Favorites.route) {
+                FavoritesScreen(onToolClick = { toolId ->
+                    if (toolId == "screen-recorder") {
+                        navController.navigate(Screen.ScreenRecorder.route)
+                    }
+                })
+            }
             composable(Screen.More.route) {
                 MoreScreen(
                     onOpenFeedback = { navController.navigate(Screen.Feedback.route) },
@@ -172,6 +187,9 @@ fun MainAppContent(
             }
             composable(Screen.Feedback.route) {
                 FeedbackScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(Screen.ScreenRecorder.route) {
+                ScreenRecorderScreen(onBackClick = { navController.popBackStack() })
             }
         }
 
