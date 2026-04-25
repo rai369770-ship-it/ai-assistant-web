@@ -4,13 +4,13 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.RequiresApi
-import com.blind_tech_nexus.app.features.screenrecorder.R
+import com.blind_tech_nexus.app.features.screenrecorder.model.RecordingState
 
 /**
  * Handler class for managing floating overlay controls during screen recording
@@ -259,14 +259,4 @@ class FloatOverlayHandler(private val context: Context) {
     private fun Int.dpToPx(): Int {
         return (this * context.resources.displayMetrics.density).toInt()
     }
-}
-
-/**
- * Recording state for overlay
- */
-sealed class RecordingState {
-    object Idle : RecordingState()
-    object Recording : RecordingState()
-    object Paused : RecordingState()
-    object Stopped : RecordingState()
 }

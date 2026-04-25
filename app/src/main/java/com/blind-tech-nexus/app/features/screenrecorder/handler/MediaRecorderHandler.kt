@@ -22,18 +22,27 @@ class MediaRecorderHandler(
     private var isPrepared = false
     
     /**
-     * Initialize and configure the MediaRecorder
+     * Initialize and configure the MediaRecorder (API 31+)
      */
     @RequiresApi(Build.VERSION_CODES.S)
     fun initialize(): Boolean {
         return try {
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(Looper.getMainLooper())
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }
-            
+            mediaRecorder = MediaRecorder(Looper.getMainLooper())
+            configureRecorder()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+    
+    /**
+     * Initialize and configure the MediaRecorder (legacy - pre API 31)
+     */
+    @Suppress("DEPRECATION")
+    fun initializeLegacy(): Boolean {
+        return try {
+            mediaRecorder = MediaRecorder()
             configureRecorder()
             true
         } catch (e: Exception) {
@@ -45,7 +54,6 @@ class MediaRecorderHandler(
     /**
      * Configure MediaRecorder with appropriate settings
      */
-    @RequiresApi(Build.VERSION_CODES.S)
     private fun configureRecorder() {
         mediaRecorder?.apply {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)

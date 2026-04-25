@@ -1,14 +1,17 @@
 package com.blind_tech_nexus.app.features.screenrecorder.ui
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.blind_tech_nexus.app.features.screenrecorder.handler.FloatOverlayHandler
 import com.blind_tech_nexus.app.features.screenrecorder.handler.PermissionHandler
 import com.blind_tech_nexus.app.features.screenrecorder.model.RecordingEvent
 import com.blind_tech_nexus.app.features.screenrecorder.model.RecordingState
 import com.blind_tech_nexus.app.features.screenrecorder.model.ScreenRecordingConfig
+import com.blind_tech_nexus.app.features.screenrecorder.service.ScreenRecorderForegroundService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +26,7 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
     private val context = application.applicationContext
     
     private var screenRecorderManager: ScreenRecorderManager? = null
+    private var floatOverlayHandler: FloatOverlayHandler? = null
     
     val permissionHandler = PermissionHandler(context)
     
@@ -40,7 +44,7 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
     }
     
     /**
-     * Initialize the screen recorder manager
+     * Initialize the screen recorder manager and float overlay handler
      */
     private fun initializeRecorder() {
         screenRecorderManager = ScreenRecorderManager(
@@ -48,9 +52,13 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
             config = _uiState.value.config
         )
         
+        floatOverlayHandler = FloatOverlayHandler(context)
+        
         // Observe recording state
         screenRecorderManager?.recordingState?.observeForever { state ->
             _recordingState.value = state
+            // Update floating overlay when state changes
+            updateFloatingOverlay(state)
         }
         
         // Observe recording events
@@ -123,6 +131,7 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
      */
     private fun updateRecorderConfig(newConfig: ScreenRecordingConfig) {
         screenRecorderManager?.cleanup()
+        floatOverlayHandler?.cleanup()
         initializeRecorder()
     }
     
@@ -156,12 +165,55 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
     private fun startRecording() {
         viewModelScope.launch {
             val success = screenRecorderManager?.startRecording() == true
-            if (!success) {
+            if (success) {
+                // Show floating overlay after recording starts
+                showFloatingOverlay()
+            } else {
                 _uiState.value = _uiState.value.copy(
                     currentEvent = RecordingEvent.RecordingError("Failed to start recording")
                 )
             }
         }
+    }
+    
+    /**
+     * Show floating overlay with recording controls
+     */
+    private fun showFloatingOverlay() {
+        val currentState = _recordingState.value ?: RecordingState.Idle
+        
+        floatOverlayHandler?.showFloatingOverlay(
+            state = currentState,
+            onPause = {
+                viewModelScope.launch {
+                    pauseRecording()
+                }
+            },
+            onStop = {
+                viewModelScope.launch {
+                    stopRecording()
+                }
+            },
+            onResume = {
+                viewModelScope.launch {
+                    resumeRecording()
+                }
+            }
+        )
+    }
+    
+    /**
+     * Update floating overlay based on recording state
+     */
+    private fun updateFloatingOverlay(state: RecordingState) {
+        floatOverlayHandler?.updateOverlayState(state)
+    }
+    
+    /**
+     * Hide floating overlay
+     */
+    private fun hideFloatingOverlay() {
+        floatOverlayHandler?.hideFloatingOverlay()
     }
     
     /**
@@ -183,6 +235,7 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
      */
     fun stopRecording() {
         screenRecorderManager?.stopRecording()
+        hideFloatingOverlay()
     }
     
     /**
@@ -223,6 +276,7 @@ class ScreenRecorderViewModel(application: Application) : AndroidViewModel(appli
     override fun onCleared() {
         super.onCleared()
         screenRecorderManager?.cleanup()
+        floatOverlayHandler?.cleanup()
     }
 }
 

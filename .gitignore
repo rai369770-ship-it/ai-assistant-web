@@ -1,68 +1,46 @@
 ```
-# Android build artifacts
-*.apk
-*.aar
-*.dex
-*.so
-*.jar
+# Compiled and build artifacts
 *.class
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.out
+*.pyc
+__pycache__/
 
-# Android build directories
+# Dependencies
+node_modules/
+venv/
+.venv/
+.env
+.env.local
+*.env.*
+
+# Build directories (common for various projects)
+dist/
 build/
+target/
 .gradle/
-captures/
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+.coverage
 
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Android Studio navigation editor temp files
-.navigation/
-
-# Android Studio generated files
-*.iml
-*.iws
+# IDE and editor files
+.vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
 
-# Generated/compiled files
-bin/
-gen/
-out/
-
-# Log Files
-*.log
-
-# OS generated files
+# System files
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
-.env.local
-*.env
-
-# Coverage reports
-coverage/
-*.gcov
-*.profraw
-
-# Debug symbols
-*.map
-
-# Temporary files
-*.tmp
-*.temp
-
-# Python related (if any Python components)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.nox/
+# Logs
+*.log
 ```

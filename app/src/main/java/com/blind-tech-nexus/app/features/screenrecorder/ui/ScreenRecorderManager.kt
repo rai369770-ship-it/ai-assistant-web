@@ -127,9 +127,17 @@ class ScreenRecorderManager(
             val outputFile = File(currentOutputPath!!)
             mediaRecorderHandler = MediaRecorderHandler(config, outputFile)
             
-            if (!mediaRecorderHandler?.initialize()!!) {
-                _recordingEvents.value = RecordingEvent.RecordingError("Failed to initialize media recorder")
-                return false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!mediaRecorderHandler?.initialize()!!) {
+                    _recordingEvents.value = RecordingEvent.RecordingError("Failed to initialize media recorder")
+                    return false
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                if (!mediaRecorderHandler?.initializeLegacy()!!) {
+                    _recordingEvents.value = RecordingEvent.RecordingError("Failed to initialize media recorder")
+                    return false
+                }
             }
             
             // Get input surface from MediaRecorder
