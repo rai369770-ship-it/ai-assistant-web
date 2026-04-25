@@ -332,7 +332,7 @@ private fun ScreenWithTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBackClick, modifier = Modifier.size(72.dp, 40.dp)) {
-                Text("Back")
+                Text("Go back")
             }
             Text(
                 text = title,
