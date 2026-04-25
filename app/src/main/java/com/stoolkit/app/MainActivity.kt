@@ -135,7 +135,24 @@ fun MainAppContent(
                 ToolsScreen(
                     navController = navController,
                     onToolClick = { toolName ->
-                        // Handle tool click - show toast or navigate to detail
+                        // Handle tool click - navigate to specific tool screen
+                        when (toolName) {
+                            "Screen Recorder" -> {
+                                navController.navigate(Screen.ScreenRecorder.route)
+                            }
+                            else -> {
+                                // Show coming soon toast for other tools
+                            }
+                        }
+                    }
+                )
+            }
+            
+            // Screen Recorder screen
+            composable(Screen.ScreenRecorder.route) {
+                com.blind_tech_nexus.app.features.screenrecorder.ui.ScreenRecorderScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }

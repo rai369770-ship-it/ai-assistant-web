@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Articles : Screen("articles")
     object Favorites : Screen("favorites")
     object More : Screen("more")
+    object ScreenRecorder : Screen("screen_recorder")
 }
 
 /**
