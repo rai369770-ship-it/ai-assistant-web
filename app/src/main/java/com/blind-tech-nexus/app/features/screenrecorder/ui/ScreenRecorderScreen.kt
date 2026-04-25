@@ -233,94 +233,74 @@ fun ScreenRecorderScreen(
             
             Spacer(Modifier.weight(1f))
             
-            // Recording control buttons
-            when (recordingState) {
-                RecordingState.Idle, RecordingState.Stopped -> {
-                    Button(
-                        onClick = {
-                            val intent = viewModel.createMediaProjectionIntent()
-                            mediaProjectionLauncher.launch(intent)
-                        },
+            // Recording control button - only Start Recording is shown
+            // Pause/Stop controls are in the floating overlay during recording
+            if (recordingState == RecordingState.Idle || recordingState == RecordingState.Stopped) {
+                Button(
+                    onClick = {
+                        val intent = viewModel.createMediaProjectionIntent()
+                        mediaProjectionLauncher.launch(intent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Icon(Icons.Default.FiberManualRecord, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Start Recording", style = MaterialTheme.typography.titleMedium)
+                }
+                
+                // Show status when recording
+                if (recordingState == RecordingState.Stopped) {
+                    Text(
+                        text = "Recording completed. Check notification or dialog for options.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            } else {
+                // Show recording status message
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Red
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FiberManualRecord,
+                            contentDescription = null,
+                            tint = Color.Red,
+                            modifier = Modifier.size(24.dp)
                         )
-                    ) {
-                        Icon(Icons.Default.FiberManualRecord, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Start Recording", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = if (recordingState == RecordingState.Recording) {
+                                "Recording in progress... Controls are in floating overlay"
+                            } else {
+                                "Recording paused. Use floating overlay to resume or stop."
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
-                RecordingState.Recording -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.pauseRecording() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
-                            )
-                        ) {
-                            Icon(Icons.Default.Pause, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Pause Recording")
-                        }
-                        
-                        Button(
-                            onClick = { viewModel.stopRecording() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Red
-                            )
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Stop Recording")
-                        }
-                    }
-                }
-                RecordingState.Paused -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.resumeRecording() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Resume Recording")
-                        }
-                        
-                        Button(
-                            onClick = { viewModel.stopRecording() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Red
-                            )
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Stop Recording")
-                        }
-                    }
-                }
+                
+                // Info about floating controls
+                Text(
+                    text = "Use the floating overlay to pause/resume/stop recording. You can navigate to other apps while recording.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             }
         }
     }
