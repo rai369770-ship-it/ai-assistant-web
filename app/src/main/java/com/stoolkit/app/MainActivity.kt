@@ -153,8 +153,13 @@ fun MainAppContent(
 
             composable(Screen.Tools.route) { ToolsScreen(onToolClick = {}) }
             composable(Screen.Articles.route) { ArticlesScreen() }
-            composable(Screen.Favorites.route) { FavoritesScreen() }
-            composable(Screen.More.route) { MoreScreen(onMoreOptionsClick = {}) }
+            composable(Screen.Favorites.route) { FavoritesScreen(onToolClick = {}) }
+            composable(Screen.More.route) {
+                MoreScreen(
+                    onOpenFeedback = { navController.navigate(Screen.Feedback.route) },
+                    onOpenContact = { navController.navigate(Screen.Contact.route) }
+                )
+            }
             composable(Screen.About.route) {
                 AboutScreen(
                     onBackClick = { navController.popBackStack() },

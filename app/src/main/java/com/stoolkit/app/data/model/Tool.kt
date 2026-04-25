@@ -1,8 +1,11 @@
 package com.blindtechnexus.app.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Represents a tool category in the app
  */
+@Serializable
 enum class ToolCategory {
     AI_TOOLS,
     AUDIO_TOOLS,
@@ -15,6 +18,7 @@ enum class ToolCategory {
 /**
  * Represents a tool available in the app
  */
+@Serializable
 data class Tool(
     val id: String,
     val name: String,

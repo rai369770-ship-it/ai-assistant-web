@@ -1,7 +1,8 @@
 package com.blindtechnexus.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,11 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.blindtechnexus.app.data.ToolsRepository
+import com.blindtechnexus.app.data.local.ToolStorageManager
+import com.blindtechnexus.app.data.model.Tool
 import com.blindtechnexus.app.ui.theme.BorderTransparent
 import com.blindtechnexus.app.ui.theme.OnBackground
 import com.blindtechnexus.app.ui.theme.OnSurface
@@ -47,30 +52,65 @@ fun ToolsScreen(
     modifier: Modifier = Modifier
 ) {
     val categories = remember { ToolsRepository.getToolsByCategory() }
+    val storageManager = remember { ToolStorageManager() }
+
+    var favorites by remember { mutableStateOf(storageManager.readFavorites()) }
+    var pinnedTools by remember { mutableStateOf(storageManager.readPinnedTools()) }
+
     var toastMessage by remember { mutableStateOf("") }
     var showToast by remember { mutableStateOf(false) }
+
+    var selectedToolForActions by remember { mutableStateOf<Tool?>(null) }
+    var selectedPinnedToolToUnpin by remember { mutableStateOf<Tool?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(bottom = 24.dp),
             modifier = Modifier.semantics { contentDescription = "Tools list" }
         ) {
-            categories.forEach { category ->
-                item(key = "header-${category.name}") {
-                    CategoryHeader(categoryName = category.name.displayName)
+            if (pinnedTools.isNotEmpty()) {
+                item("header-pinned") {
+                    CategoryHeader(categoryName = "Pinned tools")
                 }
-                items(category.tools, key = { it.name }) { tool ->
+                items(pinnedTools, key = { "pinned-${it.id}" }) { tool ->
                     ToolItem(
-                        name = tool.name,
-                        description = tool.description,
+                        tool = tool,
                         onClick = {
                             toastMessage = "Coming soon"
                             showToast = true
                             onToolClick(tool.name)
+                        },
+                        onLongClick = {
+                            selectedPinnedToolToUnpin = tool
                         }
                     )
                 }
             }
+
+            categories.forEach { category ->
+                val filteredTools = category.tools.filter { tool ->
+                    pinnedTools.none { pinnedTool -> pinnedTool.id == tool.id }
+                }
+                if (filteredTools.isNotEmpty()) {
+                    item(key = "header-${category.name}") {
+                        CategoryHeader(categoryName = category.name.displayName)
+                    }
+                    items(filteredTools, key = { it.id }) { tool ->
+                        ToolItem(
+                            tool = tool,
+                            onClick = {
+                                toastMessage = "Coming soon"
+                                showToast = true
+                                onToolClick(tool.name)
+                            },
+                            onLongClick = {
+                                selectedToolForActions = tool
+                            }
+                        )
+                    }
+                }
+            }
+
             item("footer") {
                 Text(
                     text = "More tools coming soon",
@@ -87,6 +127,73 @@ fun ToolsScreen(
         if (showToast) {
             Toast(message = toastMessage, onDismiss = { showToast = false })
         }
+    }
+
+    selectedToolForActions?.let { tool ->
+        val isFavorite = favorites.any { it.id == tool.id }
+        val isPinned = pinnedTools.any { it.id == tool.id }
+        AlertDialog(
+            onDismissRequest = { selectedToolForActions = null },
+            title = { Text("Choose an action.") },
+            text = {
+                when {
+                    isFavorite && isPinned -> Text("No action available.")
+                    else -> Text("Select an action for ${tool.name}.")
+                }
+            },
+            confirmButton = {
+                if (!isFavorite) {
+                    TextButton(
+                        onClick = {
+                            val updated = (favorites + tool).distinctBy { it.id }
+                            storageManager.saveFavorites(updated)
+                            favorites = updated
+                            selectedToolForActions = null
+                        }
+                    ) { Text("Add to favorites") }
+                }
+            },
+            dismissButton = {
+                if (!isPinned) {
+                    TextButton(
+                        onClick = {
+                            val updated = (pinnedTools + tool).distinctBy { it.id }
+                            storageManager.savePinnedTools(updated)
+                            pinnedTools = updated
+                            selectedToolForActions = null
+                        }
+                    ) { Text("Pin") }
+                } else {
+                    TextButton(onClick = { selectedToolForActions = null }) {
+                        Text("Close")
+                    }
+                }
+            }
+        )
+    }
+
+    selectedPinnedToolToUnpin?.let { tool ->
+        AlertDialog(
+            onDismissRequest = { selectedPinnedToolToUnpin = null },
+            title = { Text("Unpin ${tool.name}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val updated = pinnedTools.filterNot { it.id == tool.id }
+                        storageManager.savePinnedTools(updated)
+                        pinnedTools = updated
+                        selectedPinnedToolToUnpin = null
+                    }
+                ) {
+                    Text("Unpin")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedPinnedToolToUnpin = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -116,20 +223,21 @@ fun CategoryHeader(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ToolItem(
-    name: String,
-    description: String,
+    tool: Tool,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$name. $description"
+                contentDescription = "${tool.name}. ${tool.id}. ${tool.description}"
             },
         colors = CardDefaults.cardColors(containerColor = SurfaceTransparent),
         border = BorderStroke(1.dp, BorderTransparent),
@@ -143,14 +251,21 @@ fun ToolItem(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = name,
+                    text = tool.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = OnSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = description,
+                    text = tool.id,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = tool.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = OnSurfaceDisabled,
                     maxLines = 2,

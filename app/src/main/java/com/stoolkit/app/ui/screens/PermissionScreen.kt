@@ -18,10 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,14 +37,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.blindtechnexus.app.data.local.ToolStorageManager
 import com.blindtechnexus.app.ui.theme.OnBackground
 import com.blindtechnexus.app.ui.theme.OnPrimary
 import com.blindtechnexus.app.ui.theme.OnSurfaceDisabled
 import com.blindtechnexus.app.ui.theme.OnSurfaceMedium
 import com.blindtechnexus.app.ui.theme.Primary
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -51,6 +54,7 @@ fun PermissionScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val storageManager = remember { ToolStorageManager() }
     val powerManager = context.getSystemService(PowerManager::class.java)
 
     var hasAllFilesAccess by remember {
@@ -62,6 +66,7 @@ fun PermissionScreen(
     var hasBatteryOptimizationIgnored by remember {
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
+    var showContinueWithoutPermissionDialog by remember { mutableStateOf(false) }
 
     val runtimePermissions = remember {
         buildList {
@@ -99,6 +104,7 @@ fun PermissionScreen(
 
     LaunchedEffect(hasAllFilesAccess, allRuntimeGranted, hasOverlayPermission, hasBatteryOptimizationIgnored) {
         if (hasAllFilesAccess && allRuntimeGranted && hasOverlayPermission && hasBatteryOptimizationIgnored) {
+            storageManager.ensureStorageFiles()
             onPermissionsGranted()
         }
     }
@@ -190,6 +196,17 @@ fun PermissionScreen(
             Text(text = "Ignore battery optimization", color = OnPrimary)
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { showContinueWithoutPermissionDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Text("Continue without granting permissions")
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         val statusText = when {
@@ -201,6 +218,33 @@ fun PermissionScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = OnSurfaceDisabled,
             textAlign = TextAlign.Center
+        )
+    }
+
+    if (showContinueWithoutPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showContinueWithoutPermissionDialog = false },
+            title = { Text("Would you really like to continue without granting permissions?") },
+            text = {
+                Text(
+                    "It may reduce your seemless experience with the app. We request you again to grant all permissions requested by the application."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showContinueWithoutPermissionDialog = false
+                        onPermissionsGranted()
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showContinueWithoutPermissionDialog = false }) {
+                    Text("Grant")
+                }
+            }
         )
     }
 }
