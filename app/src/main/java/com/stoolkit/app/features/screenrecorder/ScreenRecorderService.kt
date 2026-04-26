@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
@@ -27,16 +28,17 @@ class ScreenRecorderService : Service() {
     private var mediaRecorder: MediaRecorder? = null
     private var outputFile: File? = null
     private var isPaused = false
-    
+    private var isMicrophoneCaptureEnabled = false
+
     companion object {
         const val ACTION_START = "com.blindtechnexus.app.screenrecorder.START"
         const val ACTION_PAUSE = "com.blindtechnexus.app.screenrecorder.PAUSE"
         const val ACTION_RESUME = "com.blindtechnexus.app.screenrecorder.RESUME"
         const val ACTION_STOP = "com.blindtechnexus.app.screenrecorder.STOP"
-        
+
         const val CHANNEL_ID = "screen_recorder_channel"
         const val NOTIFICATION_ID = 5001
-        
+
         var isRecording = false
             private set
     }
@@ -74,9 +76,12 @@ class ScreenRecorderService : Service() {
     }
 
     private fun startRecording(intent: Intent) {
+        startAsForeground(isPaused = false, contentText = "Preparing screen recorder…")
+
         val resultCode = intent.getIntExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, -1)
         val resultData = intent.getParcelableExtra<Intent>(ScreenRecorderExtras.EXTRA_RESULT_DATA)
         val config = intent.getParcelableExtra<ScreenRecorderConfig>(ScreenRecorderExtras.EXTRA_CONFIG)
+        isMicrophoneCaptureEnabled = config?.microphoneEnabled == true
 
         if (resultCode == -1 || resultData == null) {
             stopSelf()
@@ -86,28 +91,24 @@ class ScreenRecorderService : Service() {
         try {
             val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-
-            outputFile = ScreenRecorderFileManager.createOutputFile()
-            
-            // Get display metrics first
-            val displayMetrics = getDisplayMetrics()
-            
-            // Create and prepare media recorder
-            mediaRecorder = createAndPrepareMediaRecorder(outputFile!!, config, displayMetrics)
-            
-            // Create virtual display with the recorder's surface
-            createVirtualDisplay(displayMetrics)
-            
-            // Start recording
-            mediaRecorder?.start()
-            isRecording = true
-            
-            // Start foreground service with notification controls
-            // These controls work regardless of overlay permission
-            startForeground(
-                NOTIFICATION_ID,
-                buildRecordingNotification(isPaused = false)
+            mediaProjection?.registerCallback(
+                object : MediaProjection.Callback() {
+                    override fun onStop() {
+                        stopRecording()
+                    }
+                },
+                null
             )
+
+            outputFile = ScreenRecorderFileManager.createOutputFile(this)
+            val displayMetrics = getDisplayMetrics()
+            mediaRecorder = createAndPrepareMediaRecorder(outputFile!!, displayMetrics)
+            createVirtualDisplay(displayMetrics)
+            mediaRecorder?.start()
+
+            isRecording = true
+            isPaused = false
+            startAsForeground(isPaused = false)
         } catch (e: Exception) {
             e.printStackTrace()
             cleanupResources()
@@ -119,8 +120,10 @@ class ScreenRecorderService : Service() {
         val metrics = DisplayMetrics()
         val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val display = display ?: return metrics
-            display.getRealMetrics(metrics)
+            val bounds = windowManager.currentWindowMetrics.bounds
+            metrics.widthPixels = bounds.width()
+            metrics.heightPixels = bounds.height()
+            metrics.densityDpi = resources.displayMetrics.densityDpi
         } else {
             @Suppress("DEPRECATION")
             windowManager.defaultDisplay.getRealMetrics(metrics)
@@ -130,7 +133,6 @@ class ScreenRecorderService : Service() {
 
     private fun createAndPrepareMediaRecorder(
         file: File,
-        config: ScreenRecorderConfig?,
         displayMetrics: DisplayMetrics
     ): MediaRecorder {
         val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -142,22 +144,23 @@ class ScreenRecorderService : Service() {
 
         try {
             recorder.apply {
+                val captureAudio = isMicrophoneCaptureEnabled
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                
-                // Configure audio based on settings
-                if (config?.microphoneEnabled == true) {
+                if (captureAudio) {
                     setAudioSource(MediaRecorder.AudioSource.MIC)
                 }
-                
+
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setOutputFile(file.absolutePath)
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                if (captureAudio) {
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                }
                 setVideoEncodingBitRate(8_000_000)
-                setAudioEncodingBitRate(128_000)
                 setVideoFrameRate(30)
                 setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels)
-                
+
                 prepare()
             }
         } catch (e: Exception) {
@@ -170,7 +173,7 @@ class ScreenRecorderService : Service() {
 
     private fun createVirtualDisplay(displayMetrics: DisplayMetrics) {
         val surface = mediaRecorder?.surface ?: throw IllegalStateException("MediaRecorder surface is null")
-        
+
         virtualDisplay = mediaProjection?.createVirtualDisplay(
             "screen-recording-display",
             displayMetrics.widthPixels,
@@ -184,33 +187,23 @@ class ScreenRecorderService : Service() {
     }
 
     private fun pauseRecording() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isRecording && !isPaused) {
             mediaRecorder?.pause()
             isPaused = true
-            startForeground(
-                NOTIFICATION_ID,
-                buildRecordingNotification(isPaused = true)
-            )
+            startAsForeground(isPaused = true)
         }
     }
 
     private fun resumeRecording() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isRecording && isPaused) {
             mediaRecorder?.resume()
             isPaused = false
-            startForeground(
-                NOTIFICATION_ID,
-                buildRecordingNotification(isPaused = false)
-            )
+            startAsForeground(isPaused = false)
         }
     }
 
     private fun cleanupResources() {
-        try {
-            mediaRecorder?.release()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        runCatching { mediaRecorder?.release() }
         mediaRecorder = null
 
         virtualDisplay?.release()
@@ -218,29 +211,40 @@ class ScreenRecorderService : Service() {
 
         mediaProjection?.stop()
         mediaProjection = null
-        
+
         isRecording = false
+        isPaused = false
+        isMicrophoneCaptureEnabled = false
     }
 
     private fun stopRecording() {
-        runCatching { 
-            mediaRecorder?.stop()
-            mediaRecorder?.release()
+        runCatching {
+            if (isRecording) {
+                mediaRecorder?.stop()
+            }
         }
-        mediaRecorder = null
-
-        virtualDisplay?.release()
-        virtualDisplay = null
-
-        mediaProjection?.stop()
-        mediaProjection = null
-
-        isRecording = false
+        cleanupResources()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private fun buildRecordingNotification(isPaused: Boolean): android.app.Notification {
+    private fun startAsForeground(isPaused: Boolean, contentText: String = "Tap actions to control your recording") {
+        val notification = buildRecordingNotification(isPaused = isPaused, contentText = contentText)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && isMicrophoneCaptureEnabled) {
+                serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun buildRecordingNotification(
+        isPaused: Boolean,
+        contentText: String
+    ): android.app.Notification {
         val openAppPendingIntent = PendingIntent.getActivity(
             this,
             100,
@@ -258,7 +262,7 @@ class ScreenRecorderService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(if (isPaused) "Screen recording paused" else "Recording in progress")
-            .setContentText("Tap actions to control your recording")
+            .setContentText(contentText)
             .setOngoing(!isPaused)
             .setOnlyAlertOnce(true)
             .setContentIntent(openAppPendingIntent)
@@ -280,7 +284,7 @@ class ScreenRecorderService : Service() {
     }
 
     override fun onDestroy() {
-        stopRecording()
+        cleanupResources()
         super.onDestroy()
     }
 }

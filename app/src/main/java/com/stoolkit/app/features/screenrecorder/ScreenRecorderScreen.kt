@@ -35,11 +35,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,6 +54,7 @@ fun ScreenRecorderScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val overlayHandler = remember { OverlayControlHandler(context) }
     val projectionManager = remember {
         context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -70,6 +74,14 @@ fun ScreenRecorderScreen(
                 ) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var hasRecordAudioPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -77,12 +89,16 @@ fun ScreenRecorderScreen(
         hasNotificationPermission = granted
     }
 
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasRecordAudioPermission = granted
+    }
+
     val projectionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            // Start the foreground service with proper initialization
-            // Overlay permission is optional - notification controls will be available as alternative
             val serviceIntent = Intent(context, ScreenRecorderService::class.java).apply {
                 action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
@@ -90,18 +106,17 @@ fun ScreenRecorderScreen(
                 putExtra(
                     ScreenRecorderExtras.EXTRA_CONFIG,
                     ScreenRecorderConfig(
-                        microphoneEnabled = microphoneEnabled,
+                        microphoneEnabled = microphoneEnabled && hasRecordAudioPermission,
                         deviceAudioEnabled = deviceAudioEnabled,
                         showTouchesEnabled = showTouchesEnabled,
                         hasOverlayPermission = hasOverlayPermission
                     )
                 )
             }
-            
+
             try {
                 ContextCompat.startForegroundService(context, serviceIntent)
-                
-                // Show overlay controls after a short delay if overlay permission is granted
+
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     CoroutineScope(Dispatchers.Main).launch {
                         delay(800)
@@ -128,8 +143,27 @@ fun ScreenRecorderScreen(
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasOverlayPermission = overlayHandler.hasOverlayPermission()
+                hasNotificationPermission =
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                hasRecordAudioPermission =
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             overlayHandler.hideOverlay()
         }
     }
@@ -144,13 +178,13 @@ fun ScreenRecorderScreen(
         TextButton(onClick = onBackClick) {
             Text("Go back")
         }
-        
+
         Text(
             text = "Screen recorder",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() }
         )
-        
+
         Text(
             text = "Record your screen with the following customization options.",
             style = MaterialTheme.typography.bodyMedium
@@ -182,7 +216,7 @@ fun ScreenRecorderScreen(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         if (!hasOverlayPermission) {
             Button(
                 onClick = {
@@ -191,7 +225,6 @@ fun ScreenRecorderScreen(
                         Uri.parse("package:${context.packageName}")
                     )
                     context.startActivity(intent)
-                    hasOverlayPermission = true
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Grant display over other apps permission") }
@@ -208,8 +241,21 @@ fun ScreenRecorderScreen(
             ) { Text("Grant notification permission") }
         }
 
+        if (microphoneEnabled && !hasRecordAudioPermission) {
+            Button(
+                onClick = {
+                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Grant microphone permission") }
+        }
+
         Button(
             onClick = {
+                if (microphoneEnabled && !hasRecordAudioPermission) {
+                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    return@Button
+                }
                 val captureIntent = projectionManager.createScreenCaptureIntent()
                 projectionLauncher.launch(captureIntent)
             },
@@ -218,9 +264,9 @@ fun ScreenRecorderScreen(
         ) {
             Text("Start recording")
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = if (hasOverlayPermission) {
                 "Note: Floating controls will appear over other apps. You can also use notification action buttons to control recording."
