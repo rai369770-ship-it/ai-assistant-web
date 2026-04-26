@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ScreenRecorderScreen(
     onBackClick: () -> Unit,
+    onRecordingInitiated: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -103,6 +104,7 @@ fun ScreenRecorderScreen(
                 action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_DATA, result.data)
+                putExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 3_000L)
                 putExtra(
                     ScreenRecorderExtras.EXTRA_CONFIG,
                     ScreenRecorderConfig(
@@ -116,10 +118,11 @@ fun ScreenRecorderScreen(
 
             try {
                 ContextCompat.startForegroundService(context, serviceIntent)
+                onRecordingInitiated()
 
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(800)
+                        delay(900)
                         overlayHandler.showRecordingControls(
                             onPauseClick = {
                                 context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))
@@ -289,21 +292,13 @@ private fun CheckboxRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(
-                value = checked,
-                onValueChange = onCheckedChange
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            .toggleable(value = checked, onValueChange = onCheckedChange),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Column(modifier = Modifier.padding(start = 16.dp)) {
-            Text(label, style = MaterialTheme.typography.titleSmall)
-            Text(description, style = MaterialTheme.typography.bodySmall)
+        Checkbox(checked = checked, onCheckedChange = null)
+        Column {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(text = description, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

@@ -13,13 +13,23 @@ import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import com.blindtechnexus.app.MainActivity
 import com.blindtechnexus.app.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.max
 
 class ScreenRecorderService : Service() {
 
@@ -30,7 +40,11 @@ class ScreenRecorderService : Service() {
     private var isPaused = false
     private var isMicrophoneCaptureEnabled = false
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     companion object {
+        private const val TAG = "ScreenRecorderService"
+
         const val ACTION_START = "com.blindtechnexus.app.screenrecorder.START"
         const val ACTION_PAUSE = "com.blindtechnexus.app.screenrecorder.PAUSE"
         const val ACTION_RESUME = "com.blindtechnexus.app.screenrecorder.RESUME"
@@ -78,41 +92,56 @@ class ScreenRecorderService : Service() {
     private fun startRecording(intent: Intent) {
         startAsForeground(isPaused = false, contentText = "Preparing screen recorder…")
 
-        val resultCode = intent.getIntExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, -1)
+        val resultCode = intent.getIntExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, Int.MIN_VALUE)
         val resultData = intent.getParcelableExtra<Intent>(ScreenRecorderExtras.EXTRA_RESULT_DATA)
         val config = intent.getParcelableExtra<ScreenRecorderConfig>(ScreenRecorderExtras.EXTRA_CONFIG)
+        val startDelayMs = intent.getLongExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 3_000L)
+
         isMicrophoneCaptureEnabled = config?.microphoneEnabled == true
 
-        if (resultCode == -1 || resultData == null) {
+        if (resultCode != android.app.Activity.RESULT_OK || resultData == null) {
+            Log.e(TAG, "MediaProjection permission denied or missing data")
             stopSelf()
             return
         }
 
-        try {
-            val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-            mediaProjection?.registerCallback(
-                object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        stopRecording()
-                    }
-                },
-                null
-            )
+        serviceScope.launch {
+            runCatching {
+                if (startDelayMs > 0) {
+                    startAsForeground(
+                        isPaused = false,
+                        contentText = "Recording starts in ${startDelayMs / 1000} seconds…"
+                    )
+                    delay(startDelayMs)
+                }
 
-            outputFile = ScreenRecorderFileManager.createOutputFile(this)
-            val displayMetrics = getDisplayMetrics()
-            mediaRecorder = createAndPrepareMediaRecorder(outputFile!!, displayMetrics)
-            createVirtualDisplay(displayMetrics)
-            mediaRecorder?.start()
+                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+                mediaProjection?.registerCallback(
+                    object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            Log.i(TAG, "MediaProjection stopped by system")
+                            stopRecording()
+                        }
+                    },
+                    Handler(Looper.getMainLooper())
+                )
 
-            isRecording = true
-            isPaused = false
-            startAsForeground(isPaused = false)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            cleanupResources()
-            stopSelf()
+                outputFile = ScreenRecorderFileManager.createOutputFile(this@ScreenRecorderService)
+                val displayMetrics = getDisplayMetrics()
+                mediaRecorder = createAndPrepareMediaRecorder(outputFile!!, displayMetrics)
+                createVirtualDisplay(displayMetrics)
+                mediaRecorder?.start()
+
+                isRecording = true
+                isPaused = false
+                startAsForeground(isPaused = false)
+                Log.i(TAG, "Recording started at ${outputFile?.absolutePath}")
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to start recording", error)
+                cleanupResources()
+                stopSelf()
+            }
         }
     }
 
@@ -142,24 +171,31 @@ class ScreenRecorderService : Service() {
             MediaRecorder()
         }
 
+        val safeWidth = max(2, displayMetrics.widthPixels - (displayMetrics.widthPixels % 2))
+        val safeHeight = max(2, displayMetrics.heightPixels - (displayMetrics.heightPixels % 2))
+
         try {
             recorder.apply {
-                val captureAudio = isMicrophoneCaptureEnabled
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                if (captureAudio) {
+                if (isMicrophoneCaptureEnabled) {
                     setAudioSource(MediaRecorder.AudioSource.MIC)
                 }
 
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setOutputFile(file.absolutePath)
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                if (captureAudio) {
+                if (isMicrophoneCaptureEnabled) {
                     setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                     setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(44_100)
                 }
-                setVideoEncodingBitRate(8_000_000)
+                setVideoEncodingBitRate(10_000_000)
                 setVideoFrameRate(30)
-                setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels)
+                setVideoSize(safeWidth, safeHeight)
+                setOnErrorListener { _, what, extra ->
+                    Log.e(TAG, "MediaRecorder error what=$what extra=$extra")
+                    stopRecording()
+                }
 
                 prepare()
             }
@@ -179,11 +215,11 @@ class ScreenRecorderService : Service() {
             displayMetrics.widthPixels,
             displayMetrics.heightPixels,
             displayMetrics.densityDpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
             surface,
             null,
-            null
-        )
+            Handler(Looper.getMainLooper())
+        ) ?: throw IllegalStateException("Failed to create virtual display")
     }
 
     private fun pauseRecording() {
@@ -222,7 +258,10 @@ class ScreenRecorderService : Service() {
             if (isRecording) {
                 mediaRecorder?.stop()
             }
+        }.onFailure { error ->
+            Log.w(TAG, "Stop called before recorder finalized", error)
         }
+
         cleanupResources()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -232,7 +271,7 @@ class ScreenRecorderService : Service() {
         val notification = buildRecordingNotification(isPaused = isPaused, contentText = contentText)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && isMicrophoneCaptureEnabled) {
+            if (isMicrophoneCaptureEnabled) {
                 serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             }
             startForeground(NOTIFICATION_ID, notification, serviceType)
@@ -284,6 +323,7 @@ class ScreenRecorderService : Service() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
         cleanupResources()
         super.onDestroy()
     }
