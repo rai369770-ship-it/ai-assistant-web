@@ -1,17 +1,15 @@
 package com.blindtechnexus.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -22,7 +20,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,16 +60,40 @@ fun ToolsScreen(
     var selectedToolForActions by remember { mutableStateOf<Tool?>(null) }
     var selectedPinnedToolToUnpin by remember { mutableStateOf<Tool?>(null) }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 24.dp),
-            modifier = Modifier.semantics { contentDescription = "Tools list" }
-        ) {
-            if (pinnedTools.isNotEmpty()) {
-                item("header-pinned") {
-                    CategoryHeader(categoryName = "Pinned tools")
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 24.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .semantics { contentDescription = "Tools list" }
+    ) {
+        if (pinnedTools.isNotEmpty()) {
+            item("header-pinned") {
+                CategoryHeader(categoryName = "Pinned tools")
+            }
+            items(pinnedTools, key = { "pinned-${it.id}" }) { tool ->
+                ToolItem(
+                    tool = tool,
+                    onClick = {
+                        toastMessage = "Coming soon"
+                        showToast = true
+                        onToolClick(tool.id)
+                    },
+                    onLongClick = {
+                        selectedPinnedToolToUnpin = tool
+                    }
+                )
+            }
+        }
+
+        categories.forEach { category ->
+            val filteredTools = category.tools.filter { tool ->
+                pinnedTools.none { pinnedTool -> pinnedTool.id == tool.id }
+            }
+            if (filteredTools.isNotEmpty()) {
+                item(key = "header-${category.name}") {
+                    CategoryHeader(categoryName = category.name.displayName)
                 }
-                items(pinnedTools, key = { "pinned-${it.id}" }) { tool ->
+                items(filteredTools, key = { it.id }) { tool ->
                     ToolItem(
                         tool = tool,
                         onClick = {
@@ -81,52 +102,28 @@ fun ToolsScreen(
                             onToolClick(tool.id)
                         },
                         onLongClick = {
-                            selectedPinnedToolToUnpin = tool
+                            selectedToolForActions = tool
                         }
                     )
                 }
             }
-
-            categories.forEach { category ->
-                val filteredTools = category.tools.filter { tool ->
-                    pinnedTools.none { pinnedTool -> pinnedTool.id == tool.id }
-                }
-                if (filteredTools.isNotEmpty()) {
-                    item(key = "header-${category.name}") {
-                        CategoryHeader(categoryName = category.name.displayName)
-                    }
-                    items(filteredTools, key = { it.id }) { tool ->
-                        ToolItem(
-                            tool = tool,
-                            onClick = {
-                                toastMessage = "Coming soon"
-                                showToast = true
-                                onToolClick(tool.id)
-                            },
-                            onLongClick = {
-                                selectedToolForActions = tool
-                            }
-                        )
-                    }
-                }
-            }
-
-            item("footer") {
-                Text(
-                    text = "More tools coming soon",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OnSurfaceDisabled,
-                    fontStyle = FontStyle.Italic,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                )
-            }
         }
 
-        if (showToast) {
-            Toast(message = toastMessage, onDismiss = { showToast = false })
+        item("footer") {
+            Text(
+                text = "More tools coming soon",
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceDisabled,
+                fontStyle = FontStyle.Italic,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
         }
+    }
+
+    if (showToast) {
+        Toast(message = toastMessage, onDismiss = { showToast = false })
     }
 
     selectedToolForActions?.let { tool ->
@@ -223,7 +220,6 @@ fun CategoryHeader(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ToolItem(
     tool: Tool,
@@ -235,7 +231,11 @@ fun ToolItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
             .semantics(mergeDescendants = true) {
                 contentDescription = "${tool.name}. ${tool.id}. ${tool.description}"
             },
@@ -290,21 +290,24 @@ fun Toast(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LaunchedEffect(Unit) {
+    androidx.compose.runtime.LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(2500)
         onDismiss()
     }
 
-    Box(
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
-            .wrapContentSize()
+            .fillMaxSize()
             .semantics { contentDescription = message }
     ) {
         Surface(
             color = SurfaceTransparent,
             shape = MaterialTheme.shapes.extraLarge,
             border = BorderStroke(1.dp, BorderTransparent),
-            shadowElevation = 8.dp
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.Center)
+                .padding(16.dp)
         ) {
             Text(
                 text = message,

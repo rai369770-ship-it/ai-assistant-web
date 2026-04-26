@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/overlay_background"
+    android:padding="8dp"
+    android:elevation="8dp">
+
+    <ImageButton
+        android:id="@+id/btnPauseResume"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@android:drawable/ic_media_pause"
+        android:contentDescription="Pause recording"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:layout_marginBottom="8dp"/>
+
+    <ImageButton
+        android:id="@+id/btnStop"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:contentDescription="Stop recording"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"/>
+
+</LinearLayout>
