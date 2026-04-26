@@ -92,7 +92,7 @@ dependencies {
     
 
     // FFmpeg for video processing
-    implementation "com.mrljdx:ffmpeg-kit-full-gpl:6.1.4"
+    implementation "com.mrljdx:ffmpeg-kit-full:6.1.4"
     // Testing
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
