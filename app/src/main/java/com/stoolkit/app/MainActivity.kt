@@ -189,7 +189,15 @@ fun MainAppContent(
                 FeedbackScreen(onBackClick = { navController.popBackStack() })
             }
             composable(Screen.ScreenRecorder.route) {
-                ScreenRecorderScreen(onBackClick = { navController.popBackStack() })
+                ScreenRecorderScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onRecordingInitiated = {
+                        navController.navigate(Screen.Tools.route) {
+                            popUpTo(Screen.ScreenRecorder.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
         }
 

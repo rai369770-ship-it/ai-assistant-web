@@ -15,4 +15,5 @@ object ScreenRecorderExtras {
     const val EXTRA_RESULT_CODE = "extra_result_code"
     const val EXTRA_RESULT_DATA = "extra_result_data"
     const val EXTRA_CONFIG = "extra_config"
+    const val EXTRA_START_DELAY_MS = "extra_start_delay_ms"
 }
