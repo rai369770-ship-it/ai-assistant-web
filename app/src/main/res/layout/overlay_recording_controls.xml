@@ -13,7 +13,7 @@
         android:layout_height="48dp"
         android:src="@android:drawable/ic_media_pause"
         android:contentDescription="Pause recording"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
         android:scaleType="centerInside"
         android:layout_marginBottom="8dp"/>
 
@@ -23,7 +23,7 @@
         android:layout_height="48dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
         android:contentDescription="Stop recording"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
         android:scaleType="centerInside"/>
 
 </LinearLayout>
