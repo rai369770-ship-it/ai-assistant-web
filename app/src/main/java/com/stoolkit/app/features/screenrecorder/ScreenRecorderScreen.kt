@@ -2,11 +2,9 @@ package com.blindtechnexus.app.features.screenrecorder
 
 import android.Manifest
 import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaPlayer
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -15,7 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,9 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
@@ -43,6 +37,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ScreenRecorderScreen(
@@ -59,13 +55,7 @@ fun ScreenRecorderScreen(
     var deviceAudioEnabled by remember { mutableStateOf(false) }
     var showTouchesEnabled by remember { mutableStateOf(false) }
 
-    var lastRecordingFile by remember { mutableStateOf<Uri?>(null) }
-    var showFinishedDialog by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var isPaused by remember { mutableStateOf(false) }
-    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-
-    val hasOverlayPermission = overlayHandler.hasOverlayPermission()
+    var hasOverlayPermission by remember { mutableStateOf(overlayHandler.hasOverlayPermission()) }
     var hasNotificationPermission by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -86,8 +76,17 @@ fun ScreenRecorderScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            // Check and request overlay permission first
+            if (!overlayHandler.hasOverlayPermission()) {
+                val overlayIntent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+                context.startActivity(overlayIntent)
+            }
+            
             val serviceIntent = Intent(context, ScreenRecorderService::class.java).apply {
-                action = ScreenRecorderActions.ACTION_START
+                action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_DATA, result.data)
                 putExtra(
@@ -100,12 +99,34 @@ fun ScreenRecorderScreen(
                 )
             }
             ContextCompat.startForegroundService(context, serviceIntent)
+            
+            // Show overlay controls after a short delay to ensure service is started
+            kotlinx.coroutines.GlobalScope.launch {
+                delay(500)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    overlayHandler.showRecordingControls(
+                        onPauseClick = {
+                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))
+                        },
+                        onResumeClick = {
+                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_RESUME))
+                        },
+                        onStopClick = {
+                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_STOP))
+                            overlayHandler.hideOverlay()
+                        },
+                        onUpdatePauseButton = { isPaused ->
+                            overlayHandler.updatePauseButton(isPaused)
+                        }
+                    )
+                }
+            }
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            mediaPlayer?.release()
+            overlayHandler.hideOverlay()
         }
     }
 
@@ -116,10 +137,19 @@ fun ScreenRecorderScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        TopBar(
-            onBackClick = onBackClick,
-            title = "Screen recorder",
-            subtitle = "Record your screen with the following customization options."
+        TextButton(onClick = onBackClick) {
+            Text("Go back")
+        }
+        
+        Text(
+            text = "Screen recorder",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.semantics { heading() }
+        )
+        
+        Text(
+            text = "Record your screen with the following customization options.",
+            style = MaterialTheme.typography.bodyMedium
         )
 
         Text(
@@ -129,8 +159,8 @@ fun ScreenRecorderScreen(
         )
 
         CheckboxRow(
-            label = "Mikerophone",
-            description = "Turns on or off mikerophone while recording screen.",
+            label = "Microphone",
+            description = "Turns on or off microphone while recording screen.",
             checked = microphoneEnabled,
             onCheckedChange = { microphoneEnabled = it }
         )
@@ -147,6 +177,8 @@ fun ScreenRecorderScreen(
             onCheckedChange = { showTouchesEnabled = it }
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+        
         if (!hasOverlayPermission) {
             Button(
                 onClick = {
@@ -155,9 +187,10 @@ fun ScreenRecorderScreen(
                         Uri.parse("package:${context.packageName}")
                     )
                     context.startActivity(intent)
+                    hasOverlayPermission = true
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Grant display over other app") }
+            ) { Text("Grant display over other apps permission") }
         }
 
         if (!hasNotificationPermission) {
@@ -168,7 +201,7 @@ fun ScreenRecorderScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Grant notification access") }
+            ) { Text("Grant notification permission") }
         }
 
         Button(
@@ -176,126 +209,18 @@ fun ScreenRecorderScreen(
                 val captureIntent = projectionManager.createScreenCaptureIntent()
                 projectionLauncher.launch(captureIntent)
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = hasOverlayPermission && hasNotificationPermission
         ) {
             Text("Start recording")
         }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = {
-                    val action = if (isPaused) ScreenRecorderActions.ACTION_RESUME else ScreenRecorderActions.ACTION_PAUSE
-                    context.startService(Intent(context, ScreenRecorderService::class.java).setAction(action))
-                    isPaused = !isPaused
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(if (isPaused) "Resume recording" else "Pause recording")
-            }
-            Button(
-                onClick = {
-                    context.startService(
-                        Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderActions.ACTION_STOP)
-                    )
-                    lastRecordingFile = ScreenRecorderFileManager.latestRecordingFile()?.let { Uri.fromFile(it) }
-                    showFinishedDialog = true
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Stop recording")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         Text(
-            text = "Recording path: /storage/emulated/0/blind-tech-nexus/screen recordings/",
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-
-    if (showFinishedDialog) {
-        AlertDialog(
-            onDismissRequest = { showFinishedDialog = false },
-            title = { Text("Screen recording completed") },
-            text = { Text("Screen recording is complete.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val uri = lastRecordingFile
-                        if (uri != null) {
-                            if (!isPlaying) {
-                                mediaPlayer = MediaPlayer().apply {
-                                    setDataSource(context, uri)
-                                    prepare()
-                                    start()
-                                }
-                                isPlaying = true
-                            } else {
-                                mediaPlayer?.stop()
-                                mediaPlayer?.release()
-                                mediaPlayer = null
-                                isPlaying = false
-                            }
-                        }
-                    }
-                ) {
-                    Text(if (isPlaying) "Stop playing" else if (isPaused) "Pause" else "Play recording")
-                }
-            },
-            dismissButton = {
-                Column(horizontalAlignment = Alignment.End) {
-                    TextButton(
-                        onClick = {
-                            lastRecordingFile?.let { uri ->
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "video/mp4"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share recording"))
-                            }
-                        }
-                    ) { Text("Share") }
-
-                    TextButton(
-                        onClick = {
-                            lastRecordingFile?.path?.let { path ->
-                                kotlin.runCatching { java.io.File(path).delete() }
-                            }
-                            showFinishedDialog = false
-                        }
-                    ) { Text("Delete") }
-
-                    TextButton(onClick = { showFinishedDialog = false }) { Text("Close") }
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun TopBar(onBackClick: () -> Unit, title: String, subtitle: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        TextButton(onClick = onBackClick) {
-            Text("Go back")
-        }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        }
-
-        Text(
-            text = subtitle,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodySmall
+            text = "Note: After starting recording, floating controls will appear over other apps. You can navigate to home or any other app while recording.",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -307,24 +232,16 @@ private fun CheckboxRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.titleSmall)
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-private fun Context.openDisplayOverOtherAppsSettings() {
-    val uri = Uri.parse("package:$packageName")
-    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, uri)
-    try {
-        startActivity(intent)
-    } catch (_: ActivityNotFoundException) {
-        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+    Column(modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.material3.CheckboxRow(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            label = {
+                Column {
+                    Text(label, style = MaterialTheme.typography.titleSmall)
+                    Text(description, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        )
     }
 }
