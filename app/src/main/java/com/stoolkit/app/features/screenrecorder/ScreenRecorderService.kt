@@ -561,7 +561,7 @@ class ScreenRecorderService : Service() {
             android.media.MediaScannerConnection.scanFile(
                 this,
                 arrayOf(filePath),
-                "video/mp4",
+                arrayOf("video/mp4"),
                 null
             )
         }
