@@ -118,11 +118,14 @@ fun ScreenRecorderScreen(
 
             try {
                 ContextCompat.startForegroundService(context, serviceIntent)
+                
+                // Navigate back to tools screen immediately
                 onRecordingInitiated()
 
+                // Show overlay if permission granted (will appear after delay)
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(900)
+                        delay(4000) // Wait for countdown + recording start
                         overlayHandler.showRecordingControls(
                             onPauseClick = {
                                 context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))

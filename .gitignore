@@ -1,63 +1,48 @@
 ```
-# Compiled and build artifacts
-*.class
-*.dex
-*.so
-*.aar
-*.apk
-*.jar
-
-# Dependencies
+# Gradle
 .gradle/
 build/
-app/build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Logs and temp files
-*.log
+# Android
+*.apk
+*.ap_
+*.aab
+captures/
+.externalNativeBuild
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Temp files
 *.tmp
+*.temp
+*.log
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Python specific
+# Dependencies
+node_modules/
+venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage*
-.nox/
-.pytest_cache/
-.mypy_cache/
+*.jar
+*.war
+*.class
 
-# Node.js specific
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-node_modules/
-dist/
+# OS
+.DS_Store
+Thumbs.db
 ```
