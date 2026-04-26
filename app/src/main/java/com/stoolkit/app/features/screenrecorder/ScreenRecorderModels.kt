@@ -7,7 +7,8 @@ import kotlinx.parcelize.Parcelize
 data class ScreenRecorderConfig(
     val microphoneEnabled: Boolean,
     val deviceAudioEnabled: Boolean,
-    val showTouchesEnabled: Boolean
+    val showTouchesEnabled: Boolean,
+    val hasOverlayPermission: Boolean = false
 ) : Parcelable
 
 object ScreenRecorderExtras {

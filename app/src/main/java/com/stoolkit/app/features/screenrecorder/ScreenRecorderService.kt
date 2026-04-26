@@ -83,72 +83,101 @@ class ScreenRecorderService : Service() {
             return
         }
 
-        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-
-        outputFile = ScreenRecorderFileManager.createOutputFile()
-        prepareMediaRecorder(outputFile!!, config)
-        createVirtualDisplay()
-        
         try {
+            val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+
+            outputFile = ScreenRecorderFileManager.createOutputFile()
+            
+            // Get display metrics first
+            val displayMetrics = getDisplayMetrics()
+            
+            // Create and prepare media recorder
+            mediaRecorder = createAndPrepareMediaRecorder(outputFile!!, config, displayMetrics)
+            
+            // Create virtual display with the recorder's surface
+            createVirtualDisplay(displayMetrics)
+            
+            // Start recording
             mediaRecorder?.start()
             isRecording = true
+            
+            // Start foreground service with notification controls
+            // These controls work regardless of overlay permission
             startForeground(
                 NOTIFICATION_ID,
                 buildRecordingNotification(isPaused = false)
             )
         } catch (e: Exception) {
             e.printStackTrace()
+            cleanupResources()
             stopSelf()
         }
     }
 
-    private fun prepareMediaRecorder(file: File, config: ScreenRecorderConfig?) {
-        @Suppress("DEPRECATION")
+    private fun getDisplayMetrics(): DisplayMetrics {
+        val metrics = DisplayMetrics()
+        val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val display = display ?: return metrics
+            display.getRealMetrics(metrics)
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getRealMetrics(metrics)
+        }
+        return metrics
+    }
+
+    private fun createAndPrepareMediaRecorder(
+        file: File,
+        config: ScreenRecorderConfig?,
+        displayMetrics: DisplayMetrics
+    ): MediaRecorder {
         val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
         } else {
+            @Suppress("DEPRECATION")
             MediaRecorder()
         }
 
-        recorder.apply {
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            if (config?.microphoneEnabled == true || config?.deviceAudioEnabled == true) {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
+        try {
+            recorder.apply {
+                setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                
+                // Configure audio based on settings
+                if (config?.microphoneEnabled == true) {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                }
+                
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setOutputFile(file.absolutePath)
+                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setVideoEncodingBitRate(8_000_000)
+                setAudioEncodingBitRate(128_000)
+                setVideoFrameRate(30)
+                setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels)
+                
+                prepare()
             }
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(file.absolutePath)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setVideoEncodingBitRate(8_000_000)
-            setVideoFrameRate(30)
-            
-            // Get actual screen dimensions
-            val metrics = DisplayMetrics()
-            val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.getRealMetrics(metrics)
-            setVideoSize(metrics.widthPixels, metrics.heightPixels)
-            
-            prepare()
+        } catch (e: Exception) {
+            recorder.release()
+            throw e
         }
 
-        mediaRecorder = recorder
+        return recorder
     }
 
-    private fun createVirtualDisplay() {
-        val metrics = DisplayMetrics()
-        val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        @Suppress("DEPRECATION")
-        windowManager.defaultDisplay.getRealMetrics(metrics)
-
+    private fun createVirtualDisplay(displayMetrics: DisplayMetrics) {
+        val surface = mediaRecorder?.surface ?: throw IllegalStateException("MediaRecorder surface is null")
+        
         virtualDisplay = mediaProjection?.createVirtualDisplay(
             "screen-recording-display",
-            metrics.widthPixels,
-            metrics.heightPixels,
-            metrics.densityDpi,
+            displayMetrics.widthPixels,
+            displayMetrics.heightPixels,
+            displayMetrics.densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            mediaRecorder?.surface,
+            surface,
             null,
             null
         )
@@ -174,6 +203,23 @@ class ScreenRecorderService : Service() {
                 buildRecordingNotification(isPaused = false)
             )
         }
+    }
+
+    private fun cleanupResources() {
+        try {
+            mediaRecorder?.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        mediaRecorder = null
+
+        virtualDisplay?.release()
+        virtualDisplay = null
+
+        mediaProjection?.stop()
+        mediaProjection = null
+        
+        isRecording = false
     }
 
     private fun stopRecording() {

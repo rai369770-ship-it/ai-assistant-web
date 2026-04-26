@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -79,15 +81,8 @@ fun ScreenRecorderScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            // Check and request overlay permission first
-            if (!overlayHandler.hasOverlayPermission()) {
-                val overlayIntent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:${context.packageName}")
-                )
-                context.startActivity(overlayIntent)
-            }
-            
+            // Start the foreground service with proper initialization
+            // Overlay permission is optional - notification controls will be available as alternative
             val serviceIntent = Intent(context, ScreenRecorderService::class.java).apply {
                 action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
@@ -97,32 +92,38 @@ fun ScreenRecorderScreen(
                     ScreenRecorderConfig(
                         microphoneEnabled = microphoneEnabled,
                         deviceAudioEnabled = deviceAudioEnabled,
-                        showTouchesEnabled = showTouchesEnabled
+                        showTouchesEnabled = showTouchesEnabled,
+                        hasOverlayPermission = hasOverlayPermission
                     )
                 )
             }
-            ContextCompat.startForegroundService(context, serviceIntent)
             
-            // Show overlay controls after a short delay to ensure service is started
-            kotlinx.coroutines.GlobalScope.launch {
-                delay(500)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    overlayHandler.showRecordingControls(
-                        onPauseClick = {
-                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))
-                        },
-                        onResumeClick = {
-                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_RESUME))
-                        },
-                        onStopClick = {
-                            context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_STOP))
-                            overlayHandler.hideOverlay()
-                        },
-                        onUpdatePauseButton = { isPaused ->
-                            overlayHandler.updatePauseButton(isPaused)
-                        }
-                    )
+            try {
+                ContextCompat.startForegroundService(context, serviceIntent)
+                
+                // Show overlay controls after a short delay if overlay permission is granted
+                if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        delay(800)
+                        overlayHandler.showRecordingControls(
+                            onPauseClick = {
+                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))
+                            },
+                            onResumeClick = {
+                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_RESUME))
+                            },
+                            onStopClick = {
+                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_STOP))
+                                overlayHandler.hideOverlay()
+                            },
+                            onUpdatePauseButton = { isPaused ->
+                                overlayHandler.updatePauseButton(isPaused)
+                            }
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -213,7 +214,7 @@ fun ScreenRecorderScreen(
                 projectionLauncher.launch(captureIntent)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = hasOverlayPermission && hasNotificationPermission
+            enabled = hasNotificationPermission
         ) {
             Text("Start recording")
         }
@@ -221,7 +222,11 @@ fun ScreenRecorderScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Note: After starting recording, floating controls will appear over other apps. You can navigate to home or any other app while recording.",
+            text = if (hasOverlayPermission) {
+                "Note: Floating controls will appear over other apps. You can also use notification action buttons to control recording."
+            } else {
+                "Note: Notification action buttons will be available to control your recording. Grant 'Display over other apps' permission for floating controls."
+            },
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center
         )
