@@ -51,8 +51,10 @@ class OverlayControlHandler(private val context: Context) {
         }
         
         stopButton?.setOnClickListener {
-            onStopClick()
+            // Hide overlay immediately when stop is clicked
             hideOverlay()
+            // Then call stop action
+            onStopClick()
         }
         
         val params = WindowManager.LayoutParams(
@@ -87,7 +89,7 @@ class OverlayControlHandler(private val context: Context) {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                e.printStackTrace()
+                // View might already be removed
             }
         }
         overlayView = null

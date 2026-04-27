@@ -168,6 +168,7 @@ class ScreenRecorderService : Service() {
 
         isStartRequested = true
 
+        // Start as foreground service IMMEDIATELY with proper notification
         startAsForeground(isPaused = false, contentText = "Starting screen recording...")
 
         serviceScope.launch {
@@ -235,8 +236,10 @@ class ScreenRecorderService : Service() {
                 isRecordingActive = true
                 isStartRequested = false
 
-                // Update notification to recording state
+                // Update notification to recording state with action buttons
                 startAsForeground(isPaused = false, contentText = "Recording in progress")
+                
+                // Send additional notification for visibility
                 notifyRecordingStarted()
 
                 Log.i(TAG, "Recording started at ${tempVideoFile?.absolutePath}")
@@ -498,6 +501,7 @@ class ScreenRecorderService : Service() {
     private fun stopRecording() {
         if (!isRecording) {
             isStartRequested = false
+            stopForeground(true)
             stopSelf()
             return
         }
@@ -527,6 +531,16 @@ class ScreenRecorderService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error during stop recording", e)
+                // Even on error, ensure we save the temp video file if it exists
+                runCatching {
+                    if (tempVideoFile?.exists() == true) {
+                        finalOutputFile = createFinalOutputFile()
+                        tempVideoFile?.copyTo(finalOutputFile!!, overwrite = true)
+                        tempVideoFile?.delete()
+                        tempAudioFile?.delete()
+                        scanFileForGallery()
+                    }
+                }
                 stopForeground(true)
                 stopSelf()
             }
@@ -674,11 +688,13 @@ class ScreenRecorderService : Service() {
         val notification = NotificationCompat.Builder(this, STARTED_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Screen recording started")
-            .setContentText("Use actions to pause or stop recording.")
+            .setContentText("Use floating controls or actions below to pause or stop recording.")
             .setAutoCancel(true)
             .addAction(buildAction("Pause", ACTION_PAUSE, 201))
             .addAction(buildAction("Stop", ACTION_STOP, 202))
             .build()
+        
+        // Use a separate notification ID for the "started" notification
         notificationManager.notify(STARTED_NOTIFICATION_ID, notification)
     }
 
@@ -739,6 +755,8 @@ class ScreenRecorderService : Service() {
     }
 
     override fun onDestroy() {
+        // Cancel all notifications when service is destroyed
+        notificationManager.cancel(NOTIFICATION_ID)
         notificationManager.cancel(STARTED_NOTIFICATION_ID)
         serviceScope.cancel()
         cleanupResources()

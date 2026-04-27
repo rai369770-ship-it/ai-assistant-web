@@ -25,15 +25,18 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -85,6 +88,17 @@ fun ScreenRecorderScreen(
         )
     }
 
+    // Track recording state
+    var isRecording by remember { mutableStateOf(ScreenRecorderService.isRecordingActive) }
+
+    // Listen for recording state changes
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            isRecording = ScreenRecorderService.isRecordingActive
+        }
+    }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -120,13 +134,16 @@ fun ScreenRecorderScreen(
             try {
                 ContextCompat.startForegroundService(context, serviceIntent)
                 
+                // Update recording state
+                isRecording = true
+                
                 // Navigate back to tools screen immediately
                 onRecordingInitiated()
 
                 // Show overlay if permission granted (will appear after delay)
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(1000)
+                        delay(1500)
                         overlayHandler.showRecordingControls(
                             onPauseClick = {
                                 sendRecorderAction(context, ScreenRecorderService.ACTION_PAUSE)
@@ -135,7 +152,10 @@ fun ScreenRecorderScreen(
                                 sendRecorderAction(context, ScreenRecorderService.ACTION_RESUME)
                             },
                             onStopClick = {
+                                // Hide overlay first, then stop recording
+                                overlayHandler.hideOverlay()
                                 sendRecorderAction(context, ScreenRecorderService.ACTION_STOP)
+                                isRecording = false
                             },
                             onUpdatePauseButton = { isPaused ->
                                 overlayHandler.updatePauseButton(isPaused)
@@ -144,7 +164,7 @@ fun ScreenRecorderScreen(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ScreenRecorderScreen", "Failed to start recording service", e)
             }
         }
     }
@@ -164,13 +184,15 @@ fun ScreenRecorderScreen(
                         context,
                         Manifest.permission.RECORD_AUDIO
                     ) == PackageManager.PERMISSION_GRANTED
+                // Update recording state on resume
+                isRecording = ScreenRecorderService.isRecordingActive
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            overlayHandler.hideOverlay()
+            // Don't hide overlay here - let the service manage it
         }
     }
 
@@ -256,19 +278,43 @@ fun ScreenRecorderScreen(
             ) { Text("Grant microphone permission") }
         }
 
-        Button(
-            onClick = {
-                if (microphoneEnabled && !hasRecordAudioPermission) {
-                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    return@Button
-                }
-                val captureIntent = projectionManager.createScreenCaptureIntent()
-                projectionLauncher.launch(captureIntent)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = hasNotificationPermission
-        ) {
-            Text("Start recording")
+        if (isRecording) {
+            // Show recording status instead of start button
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Recording in progress...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Use floating controls or notification to stop recording",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Button(
+                onClick = {
+                    if (microphoneEnabled && !hasRecordAudioPermission) {
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        return@Button
+                    }
+                    val captureIntent = projectionManager.createScreenCaptureIntent()
+                    projectionLauncher.launch(captureIntent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hasNotificationPermission
+            ) {
+                Text("Start recording")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
