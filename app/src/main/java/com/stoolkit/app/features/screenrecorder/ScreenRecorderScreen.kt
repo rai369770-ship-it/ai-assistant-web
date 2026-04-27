@@ -47,10 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun ScreenRecorderScreen(
@@ -60,7 +57,7 @@ fun ScreenRecorderScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val overlayHandler = remember { OverlayControlHandler(context) }
+    val overlayPermissionChecker = remember(context) { OverlayControlHandler(context) }
     val projectionManager = remember {
         context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
@@ -69,7 +66,7 @@ fun ScreenRecorderScreen(
     var deviceAudioEnabled by remember { mutableStateOf(false) }
     var showTouchesEnabled by remember { mutableStateOf(false) }
 
-    var hasOverlayPermission by remember { mutableStateOf(overlayHandler.hasOverlayPermission()) }
+    var hasOverlayPermission by remember { mutableStateOf(overlayPermissionChecker.hasOverlayPermission()) }
     var hasNotificationPermission by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -133,36 +130,9 @@ fun ScreenRecorderScreen(
 
             try {
                 ContextCompat.startForegroundService(context, serviceIntent)
-                
-                // Update recording state
-                isRecording = true
-                
+
                 // Navigate back to tools screen immediately
                 onRecordingInitiated()
-
-                // Show overlay if permission granted (will appear after delay)
-                if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        delay(1500)
-                        overlayHandler.showRecordingControls(
-                            onPauseClick = {
-                                sendRecorderAction(context, ScreenRecorderService.ACTION_PAUSE)
-                            },
-                            onResumeClick = {
-                                sendRecorderAction(context, ScreenRecorderService.ACTION_RESUME)
-                            },
-                            onStopClick = {
-                                // Hide overlay first, then stop recording
-                                overlayHandler.hideOverlay()
-                                sendRecorderAction(context, ScreenRecorderService.ACTION_STOP)
-                                isRecording = false
-                            },
-                            onUpdatePauseButton = { isPaused ->
-                                overlayHandler.updatePauseButton(isPaused)
-                            }
-                        )
-                    }
-                }
             } catch (e: Exception) {
                 Log.e("ScreenRecorderScreen", "Failed to start recording service", e)
             }
@@ -172,7 +142,7 @@ fun ScreenRecorderScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                hasOverlayPermission = overlayHandler.hasOverlayPermission()
+                hasOverlayPermission = overlayPermissionChecker.hasOverlayPermission()
                 hasNotificationPermission =
                     Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                         ContextCompat.checkSelfPermission(
@@ -192,7 +162,6 @@ fun ScreenRecorderScreen(
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            // Don't hide overlay here - let the service manage it
         }
     }
 
@@ -328,16 +297,6 @@ fun ScreenRecorderScreen(
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-private fun sendRecorderAction(context: Context, action: String) {
-    val intent = Intent(context, ScreenRecorderService::class.java).setAction(action)
-    runCatching {
-        context.startService(intent)
-    }.onFailure {
-        Log.w("ScreenRecorderScreen", "Service command fallback to foreground start for action=$action", it)
-        ContextCompat.startForegroundService(context, intent)
     }
 }
 
