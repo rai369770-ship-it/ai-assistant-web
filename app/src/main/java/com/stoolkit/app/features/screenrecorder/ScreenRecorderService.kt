@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -23,6 +24,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.MediaStore
+import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -63,6 +66,8 @@ class ScreenRecorderService : Service() {
     private var isMicrophoneCaptureEnabled = false
     private var isSystemAudioCaptureEnabled = false
     private var isStartRequested = false
+    private var isAudioCaptureActive = false
+    private var originalShowTouchesSetting: Int? = null
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -76,7 +81,9 @@ class ScreenRecorderService : Service() {
         const val ACTION_STOP = "com.blindtechnexus.app.screenrecorder.STOP"
 
         const val CHANNEL_ID = "screen_recorder_channel"
+        const val STARTED_CHANNEL_ID = "screen_recorder_started_channel"
         const val NOTIFICATION_ID = 5001
+        const val STARTED_NOTIFICATION_ID = 5002
 
         var isRecordingActive = false
             private set
@@ -115,6 +122,16 @@ class ScreenRecorderService : Service() {
                 setSound(null, null)
             }
             notificationManager.createNotificationChannel(channel)
+
+            val startedChannel = NotificationChannel(
+                STARTED_CHANNEL_ID,
+                "Screen Recorder Alerts",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Screen recording started alerts"
+                setShowBadge(false)
+            }
+            notificationManager.createNotificationChannel(startedChannel)
         }
     }
 
@@ -137,7 +154,7 @@ class ScreenRecorderService : Service() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra<ScreenRecorderConfig>(ScreenRecorderExtras.EXTRA_CONFIG)
         }
-        val startDelayMs = intent.getLongExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 3_000L)
+        val startDelayMs = intent.getLongExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 0L)
 
         isMicrophoneCaptureEnabled = config?.microphoneEnabled == true
         isSystemAudioCaptureEnabled = config?.deviceAudioEnabled == true
@@ -150,12 +167,14 @@ class ScreenRecorderService : Service() {
 
         isStartRequested = true
 
-        // Start foreground immediately with preparing status
-        startAsForeground(isPaused = false, contentText = "Preparing screen recorder...")
+        startAsForeground(isPaused = false, contentText = "Starting screen recording...")
 
         serviceScope.launch {
             try {
-                // Show countdown notification
+                // Navigate to home first for immediate clean capture.
+                navigateToHomeScreen()
+
+                // Optional countdown if configured.
                 if (startDelayMs > 0) {
                     val secondsLeft = (startDelayMs / 1000).toInt()
                     for (i in secondsLeft downTo 1) {
@@ -167,13 +186,6 @@ class ScreenRecorderService : Service() {
                         delay(1000)
                     }
                 }
-
-                // Navigate to home screen
-                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_HOME)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                startActivity(homeIntent)
 
                 // Initialize MediaProjection
                 val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -196,6 +208,8 @@ class ScreenRecorderService : Service() {
                 if (isMicrophoneCaptureEnabled || isSystemAudioCaptureEnabled) {
                     tempAudioFile = createTempAudioFile()
                 }
+
+                applyShowTouches(config?.showTouchesEnabled == true)
 
                 // Get display metrics
                 val displayMetrics = getDisplayMetrics()
@@ -222,6 +236,7 @@ class ScreenRecorderService : Service() {
 
                 // Update notification to recording state
                 startAsForeground(isPaused = false, contentText = "Recording in progress")
+                notifyRecordingStarted()
 
                 Log.i(TAG, "Recording started at ${tempVideoFile?.absolutePath}")
 
@@ -232,6 +247,42 @@ class ScreenRecorderService : Service() {
                 stopSelf()
             }
         }
+    }
+
+    private fun navigateToHomeScreen() {
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(homeIntent)
+    }
+
+    private fun applyShowTouches(enable: Boolean) {
+        runCatching {
+            if (!Settings.System.canWrite(this)) return
+            val resolver = contentResolver
+            if (originalShowTouchesSetting == null) {
+                originalShowTouchesSetting = Settings.System.getInt(resolver, Settings.System.SHOW_TOUCHES, 0)
+            }
+            Settings.System.putInt(
+                resolver,
+                Settings.System.SHOW_TOUCHES,
+                if (enable) 1 else 0
+            )
+        }.onFailure {
+            Log.w(TAG, "Unable to apply show touches setting", it)
+        }
+    }
+
+    private fun restoreShowTouchesIfNeeded() {
+        val original = originalShowTouchesSetting ?: return
+        runCatching {
+            if (!Settings.System.canWrite(this)) return
+            Settings.System.putInt(contentResolver, Settings.System.SHOW_TOUCHES, original)
+        }.onFailure {
+            Log.w(TAG, "Unable to restore show touches setting", it)
+        }
+        originalShowTouchesSetting = null
     }
 
     private fun createTempVideoFile(): File {
@@ -330,6 +381,7 @@ class ScreenRecorderService : Service() {
                 .build()
 
             // Start audio recording thread
+            isAudioCaptureActive = true
             audioThread = Thread {
                 val buffer = ShortArray(bufferSize / 2)
                 var outputStream: FileOutputStream? = null
@@ -338,7 +390,7 @@ class ScreenRecorderService : Service() {
                     outputStream = FileOutputStream(tempAudioFile)
                     audioRecord?.startRecording()
 
-                    while (isRecording && !Thread.interrupted()) {
+                    while (isAudioCaptureActive && !Thread.interrupted()) {
                         val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
                         if (read > 0) {
                             val byteBuffer = ByteBuffer.allocate(read * 2)
@@ -428,6 +480,7 @@ class ScreenRecorderService : Service() {
         }
         audioRecord = null
 
+        isAudioCaptureActive = false
         audioThread?.interrupt()
         audioThread = null
 
@@ -438,6 +491,7 @@ class ScreenRecorderService : Service() {
         isPaused = false
         isRecordingActive = false
         isStartRequested = false
+        restoreShowTouchesIfNeeded()
     }
 
     private fun stopRecording() {
@@ -460,6 +514,7 @@ class ScreenRecorderService : Service() {
                 }
 
                 // Stop audio recording
+                isAudioCaptureActive = false
                 audioRecord?.stop()
                 audioThread?.join(1000)
 
@@ -536,21 +591,34 @@ class ScreenRecorderService : Service() {
         val videoPath = tempVideoFile?.absolutePath ?: ""
         val audioPath = tempAudioFile?.absolutePath
 
-        return if (!audioPath.isNullOrBlank() && (isMicrophoneCaptureEnabled || isSystemAudioCaptureEnabled)) {
-            // Merge video with audio
+        return if (!audioPath.isNullOrBlank() && isSystemAudioCaptureEnabled && isMicrophoneCaptureEnabled) {
             """
-            -i "$videoPath" 
-            -f s16le -ar 44100 -ac 1 -i "$audioPath" 
-            -c:v copy 
-            -c:a aac -b:a 256k 
-            -shortest 
+            -i "$videoPath"
+            -f s16le -ar 44100 -ac 1 -i "$audioPath"
+            -filter_complex "[0:a][1:a]amix=inputs=2:duration=shortest:dropout_transition=2[aout]"
+            -map 0:v:0 -map "[aout]"
+            -c:v copy
+            -c:a aac -b:a 192k
+            -shortest
+            -movflags +faststart
+            -y "${finalOutputFile?.absolutePath}"
+            """.trimIndent().replace("\n", " ")
+        } else if (!audioPath.isNullOrBlank() && isSystemAudioCaptureEnabled) {
+            """
+            -i "$videoPath"
+            -f s16le -ar 44100 -ac 1 -i "$audioPath"
+            -map 0:v:0 -map 1:a:0
+            -c:v copy
+            -c:a aac -b:a 192k
+            -shortest
+            -movflags +faststart
             -y "${finalOutputFile?.absolutePath}"
             """.trimIndent().replace("\n", " ")
         } else {
-            // Just copy video
             """
-            -i "$videoPath" 
-            -c copy 
+            -i "$videoPath"
+            -c copy
+            -movflags +faststart
             -y "${finalOutputFile?.absolutePath}"
             """.trimIndent().replace("\n", " ")
         }
@@ -560,14 +628,15 @@ class ScreenRecorderService : Service() {
         val filePath = finalOutputFile?.absolutePath ?: return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = android.content.ContentValues().apply {
-                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, finalOutputFile?.name)
-                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BlindTechnexus/ScreenRecordings")
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, finalOutputFile?.name)
+                put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BlindTechnexus/ScreenRecordings")
+                put(MediaStore.Video.Media.IS_PENDING, 1)
             }
 
             val resolver = contentResolver
-            val uri = resolver.insert(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
 
             uri?.let {
                 resolver.openOutputStream(it)?.use { output ->
@@ -575,6 +644,9 @@ class ScreenRecorderService : Service() {
                         input.copyTo(output)
                     }
                 }
+                values.clear()
+                values.put(MediaStore.Video.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
                 finalOutputFile?.delete()
             }
         } else {
@@ -588,6 +660,25 @@ class ScreenRecorderService : Service() {
         }
 
         Log.i(TAG, "File saved and scanned: $filePath")
+    }
+
+    private fun notifyRecordingStarted() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val notification = NotificationCompat.Builder(this, STARTED_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Screen recording started")
+            .setContentText("Use actions to pause or stop recording.")
+            .setAutoCancel(true)
+            .addAction(buildAction("Pause", ACTION_PAUSE, 201))
+            .addAction(buildAction("Stop", ACTION_STOP, 202))
+            .build()
+        notificationManager.notify(STARTED_NOTIFICATION_ID, notification)
     }
 
     private fun startAsForeground(isPaused: Boolean, contentText: String) {
@@ -647,6 +738,7 @@ class ScreenRecorderService : Service() {
     }
 
     override fun onDestroy() {
+        notificationManager.cancel(STARTED_NOTIFICATION_ID)
         serviceScope.cancel()
         cleanupResources()
         super.onDestroy()

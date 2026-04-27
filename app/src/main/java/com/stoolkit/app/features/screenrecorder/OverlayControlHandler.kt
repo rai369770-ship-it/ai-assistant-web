@@ -5,7 +5,6 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
@@ -78,44 +77,9 @@ class OverlayControlHandler(private val context: Context) {
         try {
             windowManager.addView(overlayView, params)
             isShowing = true
-            
-            // Enable drag functionality
-            setupDraggableOverlay(overlayView!!, params)
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }
-    
-    private fun setupDraggableOverlay(view: View, params: WindowManager.LayoutParams) {
-        var initialX = 0
-        var initialY = 0
-        var initialTouchX = 0f
-        var initialTouchY = 0f
-        
-        view.setOnTouchListener(object : View.OnTouchListener {
-            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                if (v == null || event == null) return false
-                
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = params.x
-                        initialY = params.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - initialTouchX).toInt()
-                        val dy = (event.rawY - initialTouchY).toInt()
-                        params.x = initialX + dx
-                        params.y = initialY + dy
-                        windowManager.updateViewLayout(v, params)
-                        return true
-                    }
-                }
-                return false
-            }
-        })
     }
     
     fun hideOverlay() {

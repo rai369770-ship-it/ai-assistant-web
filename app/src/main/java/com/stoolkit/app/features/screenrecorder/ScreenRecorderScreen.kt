@@ -9,6 +9,7 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -104,7 +105,7 @@ fun ScreenRecorderScreen(
                 action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_DATA, result.data)
-                putExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 3_000L)
+                putExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 0L)
                 putExtra(
                     ScreenRecorderExtras.EXTRA_CONFIG,
                     ScreenRecorderConfig(
@@ -125,17 +126,16 @@ fun ScreenRecorderScreen(
                 // Show overlay if permission granted (will appear after delay)
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(4000) // Wait for countdown + recording start
+                        delay(1000)
                         overlayHandler.showRecordingControls(
                             onPauseClick = {
-                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_PAUSE))
+                                sendRecorderAction(context, ScreenRecorderService.ACTION_PAUSE)
                             },
                             onResumeClick = {
-                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_RESUME))
+                                sendRecorderAction(context, ScreenRecorderService.ACTION_RESUME)
                             },
                             onStopClick = {
-                                context.startService(Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_STOP))
-                                overlayHandler.hideOverlay()
+                                sendRecorderAction(context, ScreenRecorderService.ACTION_STOP)
                             },
                             onUpdatePauseButton = { isPaused ->
                                 overlayHandler.updatePauseButton(isPaused)
@@ -282,6 +282,16 @@ fun ScreenRecorderScreen(
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+private fun sendRecorderAction(context: Context, action: String) {
+    val intent = Intent(context, ScreenRecorderService::class.java).setAction(action)
+    runCatching {
+        context.startService(intent)
+    }.onFailure {
+        Log.w("ScreenRecorderScreen", "Service command fallback to foreground start for action=$action", it)
+        ContextCompat.startForegroundService(context, intent)
     }
 }
 
