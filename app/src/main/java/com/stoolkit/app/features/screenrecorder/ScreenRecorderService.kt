@@ -84,6 +84,7 @@ class ScreenRecorderService : Service() {
         const val STARTED_CHANNEL_ID = "screen_recorder_started_channel"
         const val NOTIFICATION_ID = 5001
         const val STARTED_NOTIFICATION_ID = 5002
+        private const val SHOW_TOUCHES_KEY = "show_touches"
 
         var isRecordingActive = false
             private set
@@ -262,11 +263,11 @@ class ScreenRecorderService : Service() {
             if (!Settings.System.canWrite(this)) return
             val resolver = contentResolver
             if (originalShowTouchesSetting == null) {
-                originalShowTouchesSetting = Settings.System.getInt(resolver, Settings.System.SHOW_TOUCHES, 0)
+                originalShowTouchesSetting = Settings.System.getInt(resolver, SHOW_TOUCHES_KEY, 0)
             }
             Settings.System.putInt(
                 resolver,
-                Settings.System.SHOW_TOUCHES,
+                SHOW_TOUCHES_KEY,
                 if (enable) 1 else 0
             )
         }.onFailure {
@@ -278,7 +279,7 @@ class ScreenRecorderService : Service() {
         val original = originalShowTouchesSetting ?: return
         runCatching {
             if (!Settings.System.canWrite(this)) return
-            Settings.System.putInt(contentResolver, Settings.System.SHOW_TOUCHES, original)
+            Settings.System.putInt(contentResolver, SHOW_TOUCHES_KEY, original)
         }.onFailure {
             Log.w(TAG, "Unable to restore show touches setting", it)
         }
