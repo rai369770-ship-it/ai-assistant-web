@@ -62,6 +62,7 @@ class ScreenRecorderService : Service() {
     private var isPaused = false
     private var isMicrophoneCaptureEnabled = false
     private var isSystemAudioCaptureEnabled = false
+    private var isStartRequested = false
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -119,9 +120,23 @@ class ScreenRecorderService : Service() {
 
     @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun startRecording(intent: Intent) {
+        if (isRecording || isStartRequested) {
+            Log.w(TAG, "Ignoring start request because recording is already active or starting")
+            return
+        }
         val resultCode = intent.getIntExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, Int.MIN_VALUE)
-        val resultData = intent.getParcelableExtra<Intent>(ScreenRecorderExtras.EXTRA_RESULT_DATA)
-        val config = intent.getParcelableExtra<ScreenRecorderConfig>(ScreenRecorderExtras.EXTRA_CONFIG)
+        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(ScreenRecorderExtras.EXTRA_RESULT_DATA, Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<Intent>(ScreenRecorderExtras.EXTRA_RESULT_DATA)
+        }
+        val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(ScreenRecorderExtras.EXTRA_CONFIG, ScreenRecorderConfig::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<ScreenRecorderConfig>(ScreenRecorderExtras.EXTRA_CONFIG)
+        }
         val startDelayMs = intent.getLongExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 3_000L)
 
         isMicrophoneCaptureEnabled = config?.microphoneEnabled == true
@@ -133,6 +148,8 @@ class ScreenRecorderService : Service() {
             return
         }
 
+        isStartRequested = true
+
         // Start foreground immediately with preparing status
         startAsForeground(isPaused = false, contentText = "Preparing screen recorder...")
 
@@ -142,7 +159,7 @@ class ScreenRecorderService : Service() {
                 if (startDelayMs > 0) {
                     val secondsLeft = (startDelayMs / 1000).toInt()
                     for (i in secondsLeft downTo 1) {
-                        if (!isRecordingActive) return@launch
+                        if (!isStartRequested) return@launch
                         startAsForeground(
                             isPaused = false,
                             contentText = "Recording starts in $i seconds..."
@@ -201,6 +218,7 @@ class ScreenRecorderService : Service() {
                 isRecording = true
                 isPaused = false
                 isRecordingActive = true
+                isStartRequested = false
 
                 // Update notification to recording state
                 startAsForeground(isPaused = false, contentText = "Recording in progress")
@@ -209,6 +227,7 @@ class ScreenRecorderService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start recording", e)
+                isStartRequested = false
                 cleanupResources()
                 stopSelf()
             }
@@ -418,10 +437,12 @@ class ScreenRecorderService : Service() {
         isRecording = false
         isPaused = false
         isRecordingActive = false
+        isStartRequested = false
     }
 
     private fun stopRecording() {
         if (!isRecording) {
+            isStartRequested = false
             stopSelf()
             return
         }
