@@ -68,6 +68,7 @@ class ScreenRecorderService : Service() {
     private var isStartRequested = false
     private var isAudioCaptureActive = false
     private var originalShowTouchesSetting: Int? = null
+    private var shouldShowOverlayControls = false
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -92,6 +93,7 @@ class ScreenRecorderService : Service() {
 
     private val notificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
     private val windowManager by lazy { getSystemService(Context.WINDOW_SERVICE) as WindowManager }
+    private val overlayControlHandler by lazy { OverlayControlHandler(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -115,7 +117,7 @@ class ScreenRecorderService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Screen Recorder",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Screen recording controls"
                 setShowBadge(false)
@@ -159,6 +161,7 @@ class ScreenRecorderService : Service() {
 
         isMicrophoneCaptureEnabled = config?.microphoneEnabled == true
         isSystemAudioCaptureEnabled = config?.deviceAudioEnabled == true
+        shouldShowOverlayControls = config?.hasOverlayPermission == true
 
         if (resultCode != Activity.RESULT_OK || resultData == null) {
             Log.e(TAG, "MediaProjection permission denied or missing data")
@@ -238,6 +241,7 @@ class ScreenRecorderService : Service() {
 
                 // Update notification to recording state with action buttons
                 startAsForeground(isPaused = false, contentText = "Recording in progress")
+                maybeShowOverlayControls()
                 
                 // Send additional notification for visibility
                 notifyRecordingStarted()
@@ -247,9 +251,27 @@ class ScreenRecorderService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start recording", e)
                 isStartRequested = false
+                notificationManager.cancel(STARTED_NOTIFICATION_ID)
                 cleanupResources()
                 stopSelf()
             }
+        }
+    }
+
+    private fun maybeShowOverlayControls() {
+        if (!shouldShowOverlayControls || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        runCatching {
+            overlayControlHandler.showRecordingControls(
+                onPauseClick = { togglePause() },
+                onResumeClick = { togglePause() },
+                onStopClick = { stopRecording() },
+                onUpdatePauseButton = { paused ->
+                    overlayControlHandler.updatePauseButton(paused)
+                }
+            )
+        }.onFailure {
+            Log.w(TAG, "Unable to display overlay controls", it)
         }
     }
 
@@ -300,13 +322,8 @@ class ScreenRecorderService : Service() {
     }
 
     private fun createFinalOutputFile(): File {
-        val baseDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-        val appDir = File(baseDir, "BlindTechnexus/ScreenRecordings")
-        if (!appDir.exists()) {
-            appDir.mkdirs()
-        }
         val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
-        return File(appDir, "ScreenRecording_$timestamp.mp4")
+        return File(cacheDir, "ScreenRecording_$timestamp.mp4")
     }
 
     private fun getDisplayMetrics(): DisplayMetrics {
@@ -461,6 +478,8 @@ class ScreenRecorderService : Service() {
     }
 
     private fun cleanupResources() {
+        overlayControlHandler.hideOverlay()
+
         try {
             virtualDisplay?.release()
         } catch (e: Exception) {
@@ -501,6 +520,8 @@ class ScreenRecorderService : Service() {
     private fun stopRecording() {
         if (!isRecording) {
             isStartRequested = false
+            notificationManager.cancel(STARTED_NOTIFICATION_ID)
+            overlayControlHandler.hideOverlay()
             stopForeground(true)
             stopSelf()
             return
@@ -526,8 +547,8 @@ class ScreenRecorderService : Service() {
                 // Release resources
                 cleanupResources()
 
-                // Merge audio and video with FFmpeg
-                mergeWithFFmpeg()
+                // Merge audio and video with FFmpeg, or copy raw video when extra audio isn't used.
+                mergeWithFFmpegOrCopyVideo()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error during stop recording", e)
@@ -547,10 +568,20 @@ class ScreenRecorderService : Service() {
         }
     }
 
-    private fun mergeWithFFmpeg() {
+    private fun mergeWithFFmpegOrCopyVideo() {
         serviceScope.launch(Dispatchers.IO) {
             try {
                 finalOutputFile = createFinalOutputFile()
+
+                if (tempAudioFile?.exists() != true || !isSystemAudioCaptureEnabled) {
+                    if (tempVideoFile?.exists() == true) {
+                        tempVideoFile?.copyTo(finalOutputFile!!, overwrite = true)
+                        tempVideoFile?.delete()
+                        tempAudioFile?.delete()
+                        scanFileForGallery()
+                    }
+                    return@launch
+                }
 
                 val command = buildFFmpegCommand()
 
@@ -735,11 +766,15 @@ class ScreenRecorderService : Service() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(if (isPaused) "Screen recording paused" else "Recording in progress")
             .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(!isPaused)
             .setOnlyAlertOnce(true)
             .setContentIntent(openAppPendingIntent)
             .addAction(pauseOrResumeAction)
             .addAction(stopAction)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
 
