@@ -9,12 +9,10 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,56 +55,38 @@ fun ScreenRecorderScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val overlayPermissionChecker = remember(context) { OverlayControlHandler(context) }
+    val overlayHelper = remember(context) { OverlayControlHandler(context) }
     val projectionManager = remember {
         context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
     var microphoneEnabled by remember { mutableStateOf(true) }
-    var deviceAudioEnabled by remember { mutableStateOf(false) }
+    var deviceAudioEnabled by remember { mutableStateOf(true) }
     var showTouchesEnabled by remember { mutableStateOf(false) }
 
-    var hasOverlayPermission by remember { mutableStateOf(overlayPermissionChecker.hasOverlayPermission()) }
+    var hasOverlayPermission by remember { mutableStateOf(overlayHelper.hasOverlayPermission()) }
     var hasNotificationPermission by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
         )
     }
     var hasRecordAudioPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
         )
     }
-
-    // Track recording state
     var isRecording by remember { mutableStateOf(ScreenRecorderService.isRecordingActive) }
-
-    // Listen for recording state changes
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(500)
-            isRecording = ScreenRecorderService.isRecordingActive
-        }
-    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasNotificationPermission = granted
-    }
+    ) { granted -> hasNotificationPermission = granted }
 
-    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasRecordAudioPermission = granted
-    }
+    ) { granted -> hasRecordAudioPermission = granted }
 
     val projectionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -116,7 +96,6 @@ fun ScreenRecorderScreen(
                 action = ScreenRecorderService.ACTION_START
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenRecorderExtras.EXTRA_RESULT_DATA, result.data)
-                putExtra(ScreenRecorderExtras.EXTRA_START_DELAY_MS, 0L)
                 putExtra(
                     ScreenRecorderExtras.EXTRA_CONFIG,
                     ScreenRecorderConfig(
@@ -126,43 +105,35 @@ fun ScreenRecorderScreen(
                         hasOverlayPermission = hasOverlayPermission
                     )
                 )
+                putExtra(ScreenRecorderExtras.EXTRA_RECORD_MIC, microphoneEnabled && hasRecordAudioPermission)
+                putExtra(ScreenRecorderExtras.EXTRA_RECORD_SYSTEM, deviceAudioEnabled)
             }
+            ContextCompat.startForegroundService(context, serviceIntent)
+            onRecordingInitiated()
+        }
+    }
 
-            try {
-                ContextCompat.startForegroundService(context, serviceIntent)
-
-                // Navigate back to tools screen immediately
-                onRecordingInitiated()
-            } catch (e: Exception) {
-                Log.e("ScreenRecorderScreen", "Failed to start recording service", e)
-            }
+    LaunchedEffect(Unit) {
+        while (true) {
+            isRecording = ScreenRecorderService.isRecordingActive
+            delay(350)
         }
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                hasOverlayPermission = overlayPermissionChecker.hasOverlayPermission()
-                hasNotificationPermission =
-                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                        ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        ) == PackageManager.PERMISSION_GRANTED
+                hasOverlayPermission = overlayHelper.hasOverlayPermission()
+                hasNotificationPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
                 hasRecordAudioPermission =
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.RECORD_AUDIO
-                    ) == PackageManager.PERMISSION_GRANTED
-                // Update recording state on resume
-                isRecording = ScreenRecorderService.isRecordingActive
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                    PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -172,59 +143,22 @@ fun ScreenRecorderScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        TextButton(onClick = onBackClick) {
-            Text("Go back")
-        }
+        TextButton(onClick = onBackClick) { Text("Go back") }
+        Text("Screen recorder", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
 
-        Text(
-            text = "Screen recorder",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { heading() }
-        )
-
-        Text(
-            text = "Record your screen with the following customization options.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Text(
-            text = "Customizations",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() }
-        )
-
-        CheckboxRow(
-            label = "Microphone",
-            description = "Turns on or off microphone while recording screen.",
-            checked = microphoneEnabled,
-            onCheckedChange = { microphoneEnabled = it }
-        )
-        CheckboxRow(
-            label = "Device audio",
-            description = "Turns on or off device audio while capturing screen.",
-            checked = deviceAudioEnabled,
-            onCheckedChange = { deviceAudioEnabled = it }
-        )
-        CheckboxRow(
-            label = "Show touches",
-            description = "Turns on or off touches capture while recording.",
-            checked = showTouchesEnabled,
-            onCheckedChange = { showTouchesEnabled = it }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
+        CheckboxRow("Microphone", "Include microphone in recording.", microphoneEnabled) { microphoneEnabled = it }
+        CheckboxRow("System audio", "Capture app/media playback (Android 10+).", deviceAudioEnabled) { deviceAudioEnabled = it }
+        CheckboxRow("Show touches", "Show touch indicators while recording.", showTouchesEnabled) { showTouchesEnabled = it }
 
         if (!hasOverlayPermission) {
             Button(
                 onClick = {
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:${context.packageName}")
+                    context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                     )
-                    context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Grant display over other apps permission") }
+            ) { Text("Grant overlay permission") }
         }
 
         if (!hasNotificationPermission) {
@@ -240,62 +174,43 @@ fun ScreenRecorderScreen(
 
         if (microphoneEnabled && !hasRecordAudioPermission) {
             Button(
-                onClick = {
-                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                },
+                onClick = { audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Grant microphone permission") }
         }
 
         if (isRecording) {
-            // Show recording status instead of start button
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = "Recording in progress...",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Use floating controls or notification to stop recording",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Recording in progress")
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    ContextCompat.startForegroundService(
+                        context,
+                        Intent(context, ScreenRecorderService::class.java).setAction(ScreenRecorderService.ACTION_STOP)
+                    )
+                }) { Text("Stop recording") }
             }
         } else {
             Button(
                 onClick = {
-                    if (microphoneEnabled && !hasRecordAudioPermission) {
-                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        return@Button
+                    val required = (!microphoneEnabled || hasRecordAudioPermission) &&
+                        (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission)
+                    if (required) {
+                        projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
                     }
-                    val captureIntent = projectionManager.createScreenCaptureIntent()
-                    projectionLauncher.launch(captureIntent)
                 },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = hasNotificationPermission
-            ) {
-                Text("Start recording")
-            }
+                enabled = (!microphoneEnabled || hasRecordAudioPermission) &&
+                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Start recording") }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         Text(
-            text = if (hasOverlayPermission) {
-                "Note: Floating controls will appear over other apps. You can also use notification action buttons to control recording."
-            } else {
-                "Note: Notification action buttons will be available to control your recording. Grant 'Display over other apps' permission for floating controls."
-            },
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center
+            text = "Use notification and floating controls for pause/resume/stop.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Start
         )
     }
 }
@@ -307,16 +222,17 @@ private fun CheckboxRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
+    androidx.compose.foundation.layout.Row(
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, onValueChange = onCheckedChange),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .toggleable(value = checked, onValueChange = onCheckedChange)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
-        Column {
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
-            Text(text = description, style = MaterialTheme.typography.bodySmall)
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(description, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

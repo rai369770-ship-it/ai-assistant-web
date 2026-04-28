@@ -97,4 +97,13 @@
     <string name="accessibility_selected">, selected</string>
     <string name="accessibility_developer_link">Opens Blind Tech Nexus website</string>
     <string name="accessibility_continue_button">Continue to app</string>
+
+    <!-- Screen Recorder -->
+    <string name="screen_recorder_recording_title">Screen recording</string>
+    <string name="screen_recorder_paused_title">Screen recording paused</string>
+    <string name="screen_recorder_notification_text">Use notification or overlay controls to pause/resume or stop.</string>
+    <string name="screen_recorder_pause">Pause</string>
+    <string name="screen_recorder_resume">Resume</string>
+    <string name="screen_recorder_stop">Stop</string>
+
 </resources>
