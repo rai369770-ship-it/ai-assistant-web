@@ -1,0 +1,22 @@
+package com.blindtechnexus.app.features.screenrecorder
+
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
+data class ScreenRecorderConfig(
+    val microphoneEnabled: Boolean,
+    val deviceAudioEnabled: Boolean,
+    val showTouchesEnabled: Boolean,
+    val hasOverlayPermission: Boolean = false
+) : Parcelable
+
+object ScreenRecorderExtras {
+    const val EXTRA_RESULT_CODE = "extra_result_code"
+    const val EXTRA_RESULT_DATA = "extra_result_data"
+    const val EXTRA_CONFIG = "extra_config"
+    const val EXTRA_START_DELAY_MS = "extra_start_delay_ms"
+
+    const val EXTRA_RECORD_MIC = "rec_mic"
+    const val EXTRA_RECORD_SYSTEM = "rec_sys"
+}
