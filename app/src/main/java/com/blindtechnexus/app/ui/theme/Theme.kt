@@ -28,7 +28,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun SToolkitTheme(
+fun BlindTechNexusTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

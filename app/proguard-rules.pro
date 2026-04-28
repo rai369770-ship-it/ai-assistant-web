@@ -3,7 +3,7 @@
 # in /sdk/tools/proguard/proguard-android.txt
 
 # Keep data classes
--keep class com.stoolkit.app.data.model.** { *; }
+-keep class com.blindtechnexus.app.data.model.** { *; }
 
 # Keep Compose
 -keep class androidx.compose.** { *; }

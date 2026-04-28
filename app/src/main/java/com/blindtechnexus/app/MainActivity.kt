@@ -33,7 +33,7 @@ import com.blindtechnexus.app.ui.screens.Toast
 import com.blindtechnexus.app.ui.screens.ToolsScreen
 import com.blindtechnexus.app.ui.screens.WelcomeScreen
 import com.blindtechnexus.app.ui.screens.openAccessibilitySettingsIntent
-import com.blindtechnexus.app.ui.theme.SToolkitTheme
+import com.blindtechnexus.app.ui.theme.BlindTechNexusTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            SToolkitTheme {
+            BlindTechNexusTheme {
                 MainAppContent(
                     hasShownWelcome = hasShownWelcome,
                     onWelcomeShown = { hasShownWelcome = true },
