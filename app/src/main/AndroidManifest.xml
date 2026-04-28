@@ -76,7 +76,7 @@
         <service
             android:name=".features.screenrecorder.ScreenRecorderService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone" />
+            android:foregroundServiceType="mediaProjection" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

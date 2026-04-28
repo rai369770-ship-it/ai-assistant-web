@@ -3,60 +3,38 @@ package com.blindtechnexus.app.features.screenrecorder
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
+import android.provider.Settings
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
-import androidx.annotation.RequiresApi
+import androidx.annotation.MainThread
 import com.blindtechnexus.app.R
 
 class OverlayControlHandler(private val context: Context) {
-    
+
     private val windowManager by lazy { context.getSystemService(Context.WINDOW_SERVICE) as WindowManager }
     private var overlayView: View? = null
-    private var isShowing = false
-    
-    fun hasOverlayPermission(): Boolean = android.provider.Settings.canDrawOverlays(context)
-    
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun showRecordingControls(
-        onPauseClick: () -> Unit,
-        onResumeClick: () -> Unit,
-        onStopClick: () -> Unit,
-        onUpdatePauseButton: (isPaused: Boolean) -> Unit
+
+    fun hasOverlayPermission(): Boolean = Settings.canDrawOverlays(context)
+
+    @MainThread
+    fun show(
+        isPaused: Boolean,
+        onTogglePause: () -> Unit,
+        onStop: () -> Unit
     ) {
-        if (isShowing) return
-        if (!hasOverlayPermission()) return
-        
-        val layoutInflater = LayoutInflater.from(context)
-        overlayView = layoutInflater.inflate(R.layout.overlay_recording_controls, null)
-        
-        val pauseButton = overlayView?.findViewById<ImageButton>(R.id.btnPauseResume)
-        val stopButton = overlayView?.findViewById<ImageButton>(R.id.btnStop)
-        
-        var isPaused = false
-        
-        pauseButton?.setOnClickListener {
-            if (isPaused) {
-                onResumeClick()
-                pauseButton.setImageResource(android.R.drawable.ic_media_pause)
-                pauseButton.contentDescription = "Pause recording"
-            } else {
-                onPauseClick()
-                pauseButton.setImageResource(android.R.drawable.ic_media_play)
-                pauseButton.contentDescription = "Resume recording"
-            }
-            isPaused = !isPaused
-        }
-        
-        stopButton?.setOnClickListener {
-            // Hide overlay immediately when stop is clicked
-            hideOverlay()
-            // Then call stop action
-            onStopClick()
-        }
-        
+        if (overlayView != null || !hasOverlayPermission()) return
+
+        val view = LayoutInflater.from(context).inflate(R.layout.overlay_recording_controls, null)
+        val pauseButton = view.findViewById<ImageButton>(R.id.btnPauseResume)
+        val stopButton = view.findViewById<ImageButton>(R.id.btnStop)
+
+        pauseButton.setOnClickListener { onTogglePause() }
+        stopButton.setOnClickListener { onStop() }
+        setPauseStateInternal(pauseButton, isPaused)
+
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -66,45 +44,38 @@ class OverlayControlHandler(private val context: Context) {
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             },
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 50
-            y = 200
+            x = 24
+            y = 160
         }
-        
-        try {
-            windowManager.addView(overlayView, params)
-            isShowing = true
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+
+        runCatching { windowManager.addView(view, params) }
+        overlayView = view
     }
-    
-    fun hideOverlay() {
-        overlayView?.let {
-            try {
-                windowManager.removeView(it)
-            } catch (e: Exception) {
-                // View might already be removed
-            }
-        }
+
+    @MainThread
+    fun updatePauseState(isPaused: Boolean) {
+        val pauseButton = overlayView?.findViewById<ImageButton>(R.id.btnPauseResume) ?: return
+        setPauseStateInternal(pauseButton, isPaused)
+    }
+
+    @MainThread
+    fun hide() {
+        val current = overlayView ?: return
+        runCatching { windowManager.removeView(current) }
         overlayView = null
-        isShowing = false
     }
-    
-    fun updatePauseButton(isPaused: Boolean) {
-        overlayView?.findViewById<ImageButton>(R.id.btnPauseResume)?.let { button ->
-            if (isPaused) {
-                button.setImageResource(android.R.drawable.ic_media_play)
-                button.contentDescription = "Resume recording"
-            } else {
-                button.setImageResource(android.R.drawable.ic_media_pause)
-                button.contentDescription = "Pause recording"
-            }
+
+    private fun setPauseStateInternal(button: ImageButton, isPaused: Boolean) {
+        if (isPaused) {
+            button.setImageResource(android.R.drawable.ic_media_play)
+            button.contentDescription = context.getString(R.string.screen_recorder_resume)
+        } else {
+            button.setImageResource(android.R.drawable.ic_media_pause)
+            button.contentDescription = context.getString(R.string.screen_recorder_pause)
         }
     }
 }
