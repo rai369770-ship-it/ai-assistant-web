@@ -12,7 +12,7 @@ object ToolsRepository {
     val toolsData: List<Tool> = listOf(
         // AI Tools
         Tool(
-            id = "stoolkit-ai",
+            id = "blindtechnexus-ai",
             name = "Blind Tech Nexus AI",
             description = "Multi-model native AI for writing, coding, and planning anything.",
             category = ToolCategory.AI_TOOLS
