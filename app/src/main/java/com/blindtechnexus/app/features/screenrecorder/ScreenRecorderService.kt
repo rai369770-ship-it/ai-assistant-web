@@ -42,10 +42,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
-import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
@@ -102,12 +103,11 @@ class ScreenRecorderService : Service() {
 
         private const val SAMPLE_RATE = 44_100
         private const val AUDIO_CHANNELS = 1
-
         private const val SHOW_TOUCHES_KEY = "show_touches"
 
-        @Volatile
-        var isRecordingActive: Boolean = false
-            private set
+        // State flows for Compose UI
+        val isRecordingState = MutableStateFlow(false)
+        val recordingCompletedEvent = MutableSharedFlow<Uri>(extraBufferCapacity = 1)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -158,9 +158,18 @@ class ScreenRecorderService : Service() {
             }
             mediaProjection?.registerCallback(projectionCallback!!, handler)
 
+            // Safe Resolution Calculation (Prevents MediaRecorder crashes)
             val metrics = currentDisplayMetrics()
-            val width = max(2, metrics.widthPixels - metrics.widthPixels % 2)
-            val height = max(2, metrics.heightPixels - metrics.heightPixels % 2)
+            val screenWidth = metrics.widthPixels
+            val screenHeight = metrics.heightPixels
+            val scale = if (screenWidth > 1080 || screenHeight > 1920) {
+                minOf(1080f / screenWidth, 1920f / screenHeight)
+            } else 1f
+
+            val safeWidth = ((screenWidth * scale).toInt() / 16) * 16
+            val safeHeight = ((screenHeight * scale).toInt() / 16) * 16
+            val width = max(16, safeWidth)
+            val height = max(16, safeHeight)
 
             tempVideoFile = File(cacheDir, "tmp_video_${System.currentTimeMillis()}.mp4")
             if (recordSystemAudio && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -190,7 +199,7 @@ class ScreenRecorderService : Service() {
             mediaRecorder?.start()
             isRecording = true
             isPaused = false
-            isRecordingActive = true
+            isRecordingState.value = true
 
             updateNotification()
             maybeShowOverlay()
@@ -213,7 +222,7 @@ class ScreenRecorderService : Service() {
             setOutputFile(tempVideoFile?.absolutePath)
             setVideoEncoder(MediaRecorder.VideoEncoder.H264)
             setVideoEncodingBitRate(8_000_000)
-            setVideoFrameRate(60)
+            setVideoFrameRate(30) // 30fps is universally safer than 60fps
             setVideoSize(width, height)
             if (recordMic) {
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
@@ -252,16 +261,20 @@ class ScreenRecorderService : Service() {
 
             val targetFile = tempSystemAudioFile ?: return
             isAudioCaptureActive.set(true)
+            
             audioThread = Thread {
                 FileOutputStream(targetFile).use { out ->
                     val shortBuffer = ShortArray(bufferSize / 2)
+                    // Hoist allocation outside the loop to prevent GC churn/crashes!
+                    val byteBuffer = ByteBuffer.allocate(shortBuffer.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+                    
                     audioRecord?.startRecording()
                     while (isAudioCaptureActive.get()) {
                         val read = audioRecord?.read(shortBuffer, 0, shortBuffer.size) ?: 0
                         if (read > 0) {
-                            val bytes = ByteBuffer.allocate(read * 2).order(ByteOrder.LITTLE_ENDIAN)
-                            repeat(read) { index -> bytes.putShort(shortBuffer[index]) }
-                            out.write(bytes.array())
+                            byteBuffer.clear()
+                            byteBuffer.asShortBuffer().put(shortBuffer, 0, read)
+                            out.write(byteBuffer.array(), 0, read * 2)
                         }
                     }
                 }
@@ -298,7 +311,7 @@ class ScreenRecorderService : Service() {
         }
 
         isRecording = false
-        isRecordingActive = false
+        isRecordingState.value = false
 
         scope.launch {
             try {
@@ -322,8 +335,11 @@ class ScreenRecorderService : Service() {
 
                 val mergedOrVideo = mergeIfNeeded(videoFile, systemAudioFile)
                 val galleryUri = saveToGallery(mergedOrVideo)
+                
                 if (galleryUri != null) {
                     sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, galleryUri))
+                    // Notify UI to open the success dialog
+                    recordingCompletedEvent.tryEmit(galleryUri)
                 }
 
                 if (mergedOrVideo.absolutePath != videoFile.absolutePath) {
@@ -433,7 +449,7 @@ class ScreenRecorderService : Service() {
         isPaused = false
         isStopping = false
         isRecording = false
-        isRecordingActive = false
+        isRecordingState.value = false
 
         if (releaseTemp) {
             tempVideoFile?.delete()
@@ -460,11 +476,16 @@ class ScreenRecorderService : Service() {
 
     private fun startAsForeground() {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
-                if (recordMic) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { // API 30+
+            var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (recordMic) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
             startForeground(NOTIFICATION_ID, notification, types)
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // API 29
+            // FOREGROUND_SERVICE_TYPE_MICROPHONE does not exist in API 29, so we safely omit it to prevent crashes
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        } else { // Below API 29
             startForeground(NOTIFICATION_ID, notification)
         }
     }
@@ -571,7 +592,7 @@ class ScreenRecorderService : Service() {
             getParcelableExtra(key, T::class.java)
         } else {
             @Suppress("DEPRECATION")
-            getParcelableExtra(key)
+            getParcelableExtra(key) as? T
         }
     }
 }

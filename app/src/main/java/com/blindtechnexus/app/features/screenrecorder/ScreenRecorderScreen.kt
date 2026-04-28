@@ -11,29 +11,12 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import kotlinx.coroutines.delay
 
 @Composable
 fun ScreenRecorderScreen(
@@ -78,7 +60,10 @@ fun ScreenRecorderScreen(
                 PackageManager.PERMISSION_GRANTED
         )
     }
-    var isRecording by remember { mutableStateOf(ScreenRecorderService.isRecordingActive) }
+
+    // Advanced StateFlow collection
+    val isRecording by ScreenRecorderService.isRecordingState.collectAsState()
+    var successUri by remember { mutableStateOf<Uri?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -113,10 +98,10 @@ fun ScreenRecorderScreen(
         }
     }
 
+    // Collect success events
     LaunchedEffect(Unit) {
-        while (true) {
-            isRecording = ScreenRecorderService.isRecordingActive
-            delay(350)
+        ScreenRecorderService.recordingCompletedEvent.collect { uri ->
+            successUri = uri
         }
     }
 
@@ -134,6 +119,13 @@ fun ScreenRecorderScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (successUri != null) {
+        SuccessDialog(
+            uri = successUri!!,
+            onDismiss = { successUri = null }
+        )
     }
 
     Column(
@@ -172,11 +164,14 @@ fun ScreenRecorderScreen(
             ) { Text("Grant notification permission") }
         }
 
-        if (microphoneEnabled && !hasRecordAudioPermission) {
+        // System Audio also requires RECORD_AUDIO on Android 10+
+        val needsAudioPermission = microphoneEnabled || (deviceAudioEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        
+        if (needsAudioPermission && !hasRecordAudioPermission) {
             Button(
                 onClick = { audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Grant microphone permission") }
+            ) { Text("Grant audio permission") }
         }
 
         if (isRecording) {
@@ -193,16 +188,16 @@ fun ScreenRecorderScreen(
                 }) { Text("Stop recording") }
             }
         } else {
+            val canStart = (!needsAudioPermission || hasRecordAudioPermission) &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission)
+                
             Button(
                 onClick = {
-                    val required = (!microphoneEnabled || hasRecordAudioPermission) &&
-                        (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission)
-                    if (required) {
+                    if (canStart) {
                         projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
                     }
                 },
-                enabled = (!microphoneEnabled || hasRecordAudioPermission) &&
-                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission),
+                enabled = canStart,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Start recording") }
         }
@@ -222,7 +217,7 @@ private fun CheckboxRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .toggleable(value = checked, onValueChange = onCheckedChange)
